@@ -21,9 +21,16 @@ export async function socAlertWorkflow() {
   try {
     // ═─ Step 1: Test API Connection ─═
     console.log('Step 1: Testing API Connection...');
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('  API URL:', process.env.BLACKPOINT_API_URL || 'https://api.blackpointcyber.com');
+      console.log('  API Key set:', !!process.env.BLACKPOINT_API_KEY);
+    }
     const connected = await apiClient.testConnection();
     if (!connected) {
-      throw new Error('Failed to connect to Blackpoint API');
+      console.error('  ✗ Failed to connect. Trying endpoint discovery...');
+      const results = await apiClient.discoverEndpoints();
+      console.error('  Probe results:', results);
+      throw new Error('Failed to connect to Blackpoint API - check credentials and network');
     }
     console.log('✓ Connected to Blackpoint API\n');
 
@@ -209,5 +216,7 @@ function formatDuration(ms: number): string {
   return parts.join(' ');
 }
 
-// Run workflow
-// socAlertWorkflow().catch(console.error);
+// Run workflow only when executed directly
+if (require.main === module) {
+  socAlertWorkflow().catch(console.error);
+}
