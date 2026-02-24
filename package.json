@@ -1,0 +1,29 @@
+{
+  "name": "bp-api-integration",
+  "version": "1.0.0",
+  "description": "Blackpoint Cyber API Integration - SOC Alert Dashboard with Lifecycle Tracking",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "dev": "ts-node src/examples/soc-workflow-complete.ts",
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "dashboard": "react-scripts start",
+    "export": "ts-node -e \"import { createLifecycleService } from './src/services/lifecycle.service'; const svc = createLifecycleService(); console.log(svc.exportAsCsv());\"",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
