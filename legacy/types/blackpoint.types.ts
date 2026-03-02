@@ -15,13 +15,26 @@ export interface PaginatedResponse<T> {
 }
 
 /**
- * Tenant types
+ * Simple API response (actual Blackpoint API format)
+ */
+export interface ApiResponse<T> {
+  data: T[];
+}
+
+/**
+ * Tenant types (based on real API response)
  */
 export interface Tenant {
   id: string;
   name: string;
+  accountId: string;
+  contactGroupId: string;
   created: string;
-  [key: string]: unknown;
+  description: string | null;
+  enableDeliveryEmail: boolean;
+  domain: string;
+  industryType: string | null;
+  snapAgentUrl: string;
 }
 
 /**
@@ -41,20 +54,20 @@ export interface Alert {
   [key: string]: unknown;
 }
 
-export interface DashboardSummary {
-  totalTenants: number;
-  totalOutstandingAlerts: number;
-  alertsBySeverity: Record<AlertSeverity, number>;
-  tenantAlerts: TenantAlertSummary[];
+/**
+ * Notification type
+ */
+export interface Notification {
+  id: string;
+  message: string;
+  createdAt: string;
+  [key: string]: unknown;
 }
 
-export interface TenantAlertSummary {
-  tenantId: string;
-  tenantName: string;
-  openAlerts: number;
-  outstandingAlerts: number;
-  totalAlerts: number;
-  mostRecentAlert: string | null;
+export interface DashboardSummary {
+  totalTenants: number;
+  tenants: Tenant[];
+  notifications: Notification[];
 }
 
 export interface ApiDiscoveryResult {

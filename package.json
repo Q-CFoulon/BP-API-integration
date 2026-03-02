@@ -8,22 +8,39 @@
     "dev": "ts-node src/examples/soc-workflow-complete.ts",
     "build": "tsc",
     "watch": "tsc --watch",
+    "start": "node dist/examples/soc-workflow-complete.js",
+    "test-api": "node quick-test.js",
+    "discover": "node discover-api.js",
     "dashboard": "react-scripts start",
     "export": "ts-node -e \"import { createLifecycleService } from './src/services/lifecycle.service'; const svc = createLifecycleService(); console.log(svc.exportAsCsv());\"",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "ajv": "^8.18.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@types/node": "^20.0.0",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
-    "@types/node": "^20.0.0",
-    "typescript": "^5.0.0",
-    "ts-node": "^10.9.0"
+    "react-scripts": "5.0.1",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
   },
   "engines": {
     "node": ">=16.0.0"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   }
 }

@@ -30,16 +30,16 @@ export class BlackpointConfig {
 }
 
 /**
- * Known API endpoints (discovered/documented)
+ * Known API endpoints (discovered from real API testing)
  */
 export const BLACKPOINT_ENDPOINTS = {
-  // Tenant endpoints
+  // Working endpoints
   TENANTS: '/tenants',
-  TENANT_DETAIL: '/tenants/:tenantId',
-
-  // Alert/Ticket endpoints (to be discovered)
-  ALERTS: '/alerts',
-  TENANT_ALERTS: '/tenants/:tenantId/alerts',
-  INCIDENTS: '/incidents',
-  TENANT_INCIDENTS: '/tenants/:tenantId/incidents',
+  NOTIFICATIONS: '/notifications',
+  
+  // Note: The following endpoints were tested and are NOT available:
+  // - /alerts (404)
+  // - /incidents (403)
+  // - /tenants/:tenantId/alerts (404)
+  // - /tenants/:tenantId (404)
 } as const;

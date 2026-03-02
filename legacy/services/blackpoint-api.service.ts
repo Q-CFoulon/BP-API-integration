@@ -96,10 +96,7 @@ export class BlackpointApiClient {
   async discoverEndpoints(): Promise<ApiDiscoveryResult[]> {
     const endpointsToProbe = [
       { endpoint: BLACKPOINT_ENDPOINTS.TENANTS, method: 'GET' },
-      { endpoint: BLACKPOINT_ENDPOINTS.ALERTS, method: 'GET' },
-      { endpoint: BLACKPOINT_ENDPOINTS.INCIDENTS, method: 'GET' },
-      { endpoint: '/health', method: 'GET' },
-      { endpoint: '/status', method: 'GET' },
+      { endpoint: BLACKPOINT_ENDPOINTS.NOTIFICATIONS, method: 'GET' },
     ];
 
     const results: ApiDiscoveryResult[] = [];
