@@ -1,11 +1,11 @@
 import React from 'react';
-import TenantDashboard from './components/TenantDashboard';
+import Dashboard from './components/Dashboard';
 import './App.css';
 
 function App() {
   return (
     <div className="App">
-      <TenantDashboard />
+      <Dashboard />
     </div>
   );
 }
