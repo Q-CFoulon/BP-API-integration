@@ -477,14 +477,14 @@ const TenantDetailPage: React.FC<{ tenantId: string; onBack: () => void }> = ({ 
                   key={alert.id}
                   onClick={() => setExpandedAlert(expandedAlert === alert.id ? null : alert.id)}
                   className="alert-card"
-                  style={{ borderColor: getSeverityColor(alert.severity) }}
+                  data-severity={alert.severity}
                 >
                   <div className="alert-card-header">
                     <div className="alert-card-content">
-                      <div className="alert-title-row">
-                        <div className="severity-dot" style={{ backgroundColor: getSeverityColor(alert.severity) }}></div>
+                      <div className="alert-title-row" data-severity={alert.severity} data-status={alert.status}>
+                        <div className="severity-dot"></div>
                         <span className="alert-title">{alert.title}</span>
-                        <span className="status-badge" style={{ backgroundColor: getStatusColor(alert.status) }}>
+                        <span className="status-badge">
                           {alert.status.toUpperCase()}
                         </span>
                         <span className="risk-badge">
@@ -666,7 +666,7 @@ const Dashboard = () => {
   const [selectedTenant, setSelectedTenant] = useState<string | null>(null);
 
   // Helper function to calculate age of an alert
-  const getAlertAge = (createdAt: string): { hours: number; text: string; color: string } => {
+  const getAlertAge = (createdAt: string): { hours: number; text: string; color: string; ageCategory: string } => {
     const created = new Date(createdAt);
     const now = new Date();
     const diffMs = now.getTime() - created.getTime();
@@ -675,6 +675,7 @@ const Dashboard = () => {
     
     let text: string;
     let color: string;
+    let ageCategory: string;
     
     if (days > 0) {
       text = `${days}d ${hours % 24}h`;
@@ -688,15 +689,19 @@ const Dashboard = () => {
     // Color based on age - older = more urgent
     if (hours >= 72) {
       color = '#dc2626'; // Red - critical aging
+      ageCategory = 'overdue';
     } else if (hours >= 24) {
       color = '#f97316'; // Orange - needs attention
+      ageCategory = 'delayed';
     } else if (hours >= 4) {
       color = '#eab308'; // Yellow - aging
+      ageCategory = 'warning';
     } else {
       color = '#22c55e'; // Green - fresh
+      ageCategory = 'good';
     }
     
-    return { hours, text, color };
+    return { hours, text, color, ageCategory };
   };
 
   // Get oldest unresolved alert for a tenant
@@ -766,7 +771,7 @@ const Dashboard = () => {
             </div>
             <div className={`kpi-card ${oldestAge && oldestAge.hours >= 24 ? 'highlight' : ''}`}>
               <div className="kpi-label">Oldest Open Alert</div>
-              <div className="kpi-value" style={{ color: oldestAge?.color || '#22c55e' }}>
+              <div className="kpi-value" data-age={oldestAge?.ageCategory || 'good'}>
                 {oldestAge ? oldestAge.text : '—'}
               </div>
               {oldestUnresolved && (
@@ -826,10 +831,10 @@ const Dashboard = () => {
                         <div className="client-name">{tenant.name}</div>
                         <div className="client-domain">{tenant.domain}</div>
                       </td>
-                      <td className="table-cell">
+                      <td className="table-cell" data-age={age?.ageCategory}>
                         {age && (
                           <div className="age-display">
-                            <span className="age-value" style={{ color: age.color }}>
+                            <span className="age-value">
                               {age.text}
                             </span>
                             {age.hours >= 24 && (
@@ -857,8 +862,7 @@ const Dashboard = () => {
                         <div className="score-display">
                           <div className="score-bar">
                             <div 
-                              className={`score-fill ${priorityScore > 300 ? 'critical' : priorityScore > 150 ? 'high' : 'medium'}`}
-                              style={{ width: `${Math.min(100, priorityScore / 5)}%` }}
+                              className={`score-fill ${priorityScore > 300 ? 'critical' : priorityScore > 150 ? 'high' : 'medium'} w-${Math.round(Math.min(100, priorityScore / 5) / 10) * 10}`}
                             ></div>
                           </div>
                           <span className="score-value">{priorityScore}</span>
@@ -934,11 +938,11 @@ const Dashboard = () => {
 
                 {/* Oldest Ticket Age */}
                 {oldestAlertAge && (
-                  <div className={`oldest-ticket-box ${oldestAlertAge.hours >= 24 ? 'overdue' : ''}`}>
+                  <div className={`oldest-ticket-box ${oldestAlertAge.hours >= 24 ? 'overdue' : ''}`} data-age={oldestAlertAge.ageCategory}>
                     <div className="oldest-ticket-label">OLDEST OPEN TICKET</div>
                     <div className="oldest-ticket-content">
                       <div>
-                        <span className="oldest-ticket-age" style={{ color: oldestAlertAge.color }}>
+                        <span className="oldest-ticket-age">
                           {oldestAlertAge.text}
                         </span>
                         {oldestAlertAge.hours >= 24 && (

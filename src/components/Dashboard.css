@@ -23,7 +23,32 @@
   --status-resolved: #22c55e;
   --success: #22c55e;
   --purple: #7c3aed;
+  --age-good: #22c55e;
+  --age-warning: #f59e0b;
+  --age-delayed: #f97316;
+  --age-overdue: #ef4444;
 }
+
+/* ================================
+   Data Attribute Color Selectors
+   ================================ */
+
+/* Severity Colors via data-severity attribute */
+[data-severity="critical"] { --severity-color: var(--severity-critical); }
+[data-severity="high"] { --severity-color: var(--severity-high); }
+[data-severity="medium"] { --severity-color: var(--severity-medium); }
+[data-severity="low"] { --severity-color: var(--severity-low); }
+
+/* Status Colors via data-status attribute */
+[data-status="open"] { --status-color: var(--status-open); }
+[data-status="investigating"] { --status-color: var(--status-investigating); }
+[data-status="resolved"] { --status-color: var(--status-resolved); }
+
+/* Age Colors via data-age attribute */
+[data-age="good"] { --age-color: var(--age-good); }
+[data-age="warning"] { --age-color: var(--age-warning); }
+[data-age="delayed"] { --age-color: var(--age-delayed); }
+[data-age="overdue"] { --age-color: var(--age-overdue); }
 
 /* Base Container */
 .dashboard-container {
@@ -83,6 +108,7 @@
 .kpi-value {
   font-size: 28px;
   font-weight: bold;
+  color: var(--age-color, inherit);
 }
 
 .kpi-value.blue { color: var(--accent-blue); }
@@ -237,7 +263,21 @@
 .score-fill {
   height: 100%;
   border-radius: 3px;
+  width: var(--score-width, 0%);
+  transition: width 0.3s ease;
 }
+
+/* Score width classes for when inline styles are disallowed */
+.score-fill.w-10 { width: 10%; }
+.score-fill.w-20 { width: 20%; }
+.score-fill.w-30 { width: 30%; }
+.score-fill.w-40 { width: 40%; }
+.score-fill.w-50 { width: 50%; }
+.score-fill.w-60 { width: 60%; }
+.score-fill.w-70 { width: 70%; }
+.score-fill.w-80 { width: 80%; }
+.score-fill.w-90 { width: 90%; }
+.score-fill.w-100 { width: 100%; }
 
 .score-fill.critical { background-color: var(--severity-critical); }
 .score-fill.high { background-color: var(--severity-high); }
@@ -295,6 +335,7 @@
   font-size: 16px;
   font-weight: bold;
   font-family: monospace;
+  color: var(--age-color, var(--success));
 }
 
 .age-value.green { color: var(--success); }
@@ -695,6 +736,7 @@
   font-size: 18px;
   font-weight: bold;
   font-family: monospace;
+  color: var(--age-color, var(--success));
 }
 
 .oldest-ticket-title {
@@ -1274,6 +1316,7 @@
   background: linear-gradient(135deg, var(--bg-card) 0%, rgba(30, 41, 59, 0.8) 100%);
   border: 1px solid var(--border-color);
   border-left-width: 4px;
+  border-left-color: var(--severity-color, var(--border-color));
   border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
@@ -1307,6 +1350,7 @@
   width: 12px;
   height: 12px;
   border-radius: 50%;
+  background-color: var(--severity-color, var(--text-muted));
 }
 
 .alert-title {
@@ -1318,6 +1362,7 @@
   font-size: 11px;
   padding: 4px 8px;
   border-radius: 4px;
+  background-color: var(--status-color, var(--text-muted));
   color: #000;
   font-weight: bold;
 }

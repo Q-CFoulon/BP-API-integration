@@ -39,21 +39,25 @@ BLACKPOINT_API_URL=https://api.blackpointcyber.com
 ### Running the Dashboard
 
 **Terminal Dashboard:**
+
 ```bash
 npm run dev
 ```
 
 **Web Dashboard (React UI):**
+
 ```bash
 npm run dashboard
 ```
 
 **Quick API Test:**
+
 ```bash
 npm run test-api
 ```
 
 **Discover Available Endpoints:**
+
 ```bash
 npm run discover
 ```
@@ -61,6 +65,7 @@ npm run discover
 ## Dashboard Features
 
 ### Tenant Monitoring
+
 - View all protected clients
 - Monitor protection status
 - Track onboarding dates
@@ -68,6 +73,7 @@ npm run discover
 - View tenant configurations
 
 ### System Status
+
 - Real-time connection status
 - Active notification tracking
 - Last update timestamps
@@ -91,7 +97,7 @@ See [API_LIMITATIONS.md](API_LIMITATIONS.md) for details.
 
 ## Project Structure
 
-```
+```text
 src/
 ├── components/
 │   ├── TenantDashboard.tsx    # Modern SOC dashboard UI
@@ -115,16 +121,19 @@ src/
 ## Development
 
 **Build TypeScript:**
+
 ```bash
 npm run build
 ```
 
 **Watch Mode:**
+
 ```bash
 npm run watch
 ```
 
 **Type Check:**
+
 ```bash
 npm run type-check
 ```

@@ -10,7 +10,7 @@ Last tested: March 2, 2026
 
 ## API Base URL
 
-```
+```text
 https://api.blackpointcyber.com/v1
 ```
 
@@ -25,9 +25,11 @@ https://api.blackpointcyber.com/v1
 ### ✅ Working Endpoints
 
 #### GET /v1/tenants
+
 **Status:** 200 OK
 
 **Response Format:**
+
 ```json
 {
   "data": [
@@ -48,15 +50,18 @@ https://api.blackpointcyber.com/v1
 ```
 
 **Use Cases:**
+
 - List all protected tenants
 - Monitor client onboarding
 - Access SNAP agent installers
 - Track tenant configurations
 
 #### GET /v1/notifications
+
 **Status:** 200 OK
 
 **Response Format:**
+
 ```json
 {
   "data": []
@@ -64,6 +69,7 @@ https://api.blackpointcyber.com/v1
 ```
 
 **Notes:**
+
 - Returns empty array in current testing
 - Endpoint exists and is accessible
 - Likely used for system notifications or alerts
@@ -103,31 +109,37 @@ The following endpoints were tested and returned 404:
 ## API Limitations
 
 ### 1. No Individual Tenant Details
+
 - Cannot fetch details for a specific tenant by ID
 - Must fetch all tenants and filter client-side
 - Tenant list endpoint does not support filtering parameters
 
 ### 2. No Alert/Incident Data
+
 - No access to alert or incident data through the API
 - SOC alert management must be done through Blackpoint portal
 - Cannot programmatically track alert lifecycle
 
 ### 3. No Device/Endpoint Information
+
 - Cannot list protected endpoints per tenant
 - No access to SNAP agent deployment status
 - Cannot query device inventory
 
 ### 4. Limited Pagination
+
 - Tenant endpoint does not appear to support pagination
 - All tenants returned in single response
 - May become issues with large tenant counts (100+)
 
 ### 5. No Search or Filtering
+
 - No query parameters accepted for filtering
 - All filtering must be done client-side
 - Cannot search tenants by name or other criteria
 
 ### 6. No Rate Limit Headers
+
 - API does not return `X-RateLimit-*` headers
 - Rate limits unknown and must be tested carefully
 - Implemented conservative 60 requests/minute in client
@@ -135,7 +147,9 @@ The following endpoints were tested and returned 404:
 ## Workarounds
 
 ### Tenant Details
+
 Since individual tenant endpoints don't exist:
+
 ```typescript
 // Fetch all tenants
 const tenants = await apiClient.get('/tenants');
@@ -145,13 +159,17 @@ const tenant = tenants.data.find(t => t.id === targetId);
 ```
 
 ### Alert Monitoring
+
 Since alert endpoints are unavailable:
+
 - Use Blackpoint Cyber web portal for alert management
 - Export alerts manually if needed
 - Consider using Blackpoint webhooks if available
 
 ### Device Tracking
+
 Since device endpoints are unavailable:
+
 - Track SNAP agent deployments externally
 - Use tenant `snapAgentUrl` for installer access
 - Monitor via Blackpoint portal
@@ -159,6 +177,7 @@ Since device endpoints are unavailable:
 ## API Response Patterns
 
 ### Success Response
+
 ```json
 {
   "data": [...]
@@ -166,6 +185,7 @@ Since device endpoints are unavailable:
 ```
 
 ### Error Response
+
 ```json
 {
   "message": "Cannot GET /v1/endpoint",
@@ -175,6 +195,7 @@ Since device endpoints are unavailable:
 ```
 
 ### Authentication Error
+
 ```json
 {
   "statusCode": 401,
@@ -220,6 +241,7 @@ for (const endpoint of endpoints) {
 ## Future Updates
 
 This document will be updated as:
+
 - New endpoints become available
 - API changes are discovered
 - Additional limitations are found
