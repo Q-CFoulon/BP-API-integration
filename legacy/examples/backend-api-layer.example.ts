@@ -48,7 +48,7 @@ export default async function handler(
 
     // Call Blackpoint API from backend (API key never exposed to client)
     const response = await fetch(
-      `${process.env.BLACKPOINT_API_URL}/v1/alerts?page=${pageNum}&pageSize=${size}`,
+      `${process.env.BLACKPOINT_API_URL}/v1/alert-groups?take=${size}&skip=${(pageNum - 1) * size}`,
       {
         method: 'GET',
         headers: {

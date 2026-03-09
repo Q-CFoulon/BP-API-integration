@@ -30,16 +30,28 @@ export class BlackpointConfig {
 }
 
 /**
- * Known API endpoints (discovered from real API testing)
+ * API endpoints from CompassOne API v1.4.0 spec
  */
 export const BLACKPOINT_ENDPOINTS = {
-  // Working endpoints
+  // Tenants
   TENANTS: '/tenants',
-  NOTIFICATIONS: '/notifications',
-  
-  // Note: The following endpoints were tested and are NOT available:
-  // - /alerts (404)
-  // - /incidents (403)
-  // - /tenants/:tenantId/alerts (404)
-  // - /tenants/:tenantId (404)
+
+  // Alert Groups (Detections) — use x-tenant-id header to scope by tenant
+  ALERT_GROUPS: '/alert-groups',
+  ALERT_GROUPS_BY_WEEK: '/alert-groups/alert-groups-by-week',
+  ALERT_GROUPS_COUNT: '/alert-groups/count',
+  TOP_DETECTIONS_BY_ENTITY: '/alert-groups/top-detections-by-entity',
+  TOP_DETECTIONS_BY_THREAT: '/alert-groups/top-detections-by-threat',
+
+  // Assets
+  ASSETS: '/assets',
+
+  // Accounts & Users
+  ACCOUNTS: '/accounts',
+  USERS: '/users',
+
+  // Notification channels (event-signal)
+  EVENT_SIGNAL_CHANNELS: '/event-signal/channels/list',
+  EVENT_SIGNAL_EMAIL_CHANNELS: '/event-signal/email-channels',
+  EVENT_SIGNAL_WEBHOOK_CHANNELS: '/event-signal/webhook-channels',
 } as const;

@@ -25,42 +25,57 @@ export class BlackpointApiClient {
   }
 
   /**
-   * Make an authenticated GET request to the API
+   * Make an authenticated GET request to the API.
+   * Pass tenantId to scope the request via the x-tenant-id header
+   * (preferred over the deprecated tenantId query parameter).
    */
   async get<T>(
     endpoint: string,
-    params?: Record<string, string | number | boolean>
+    params?: Record<string, string | number | boolean | string[]>,
+    tenantId?: string
   ): Promise<T> {
     const url = this.buildUrl(endpoint, params);
-    return this.request<T>(url, 'GET');
+    return this.request<T>(url, 'GET', undefined, tenantId);
   }
 
   /**
    * Make an authenticated POST request to the API
    */
-  async post<T>(endpoint: string, body?: unknown): Promise<T> {
+  async post<T>(endpoint: string, body?: unknown, tenantId?: string): Promise<T> {
     const url = this.buildUrl(endpoint);
-    return this.request<T>(url, 'POST', body);
+    return this.request<T>(url, 'POST', body, tenantId);
   }
 
   /**
-   * Build full URL with query parameters
+   * Build full URL with query parameters.
+   * Array values are serialized as repeated query params (e.g. ?status=OPEN&status=RESOLVED).
    */
-  private buildUrl(endpoint: string, params?: Record<string, string | number | boolean>): string {
+  private buildUrl(
+    endpoint: string,
+    params?: Record<string, string | number | boolean | string[]>
+  ): string {
     const fullUrl = BlackpointConfig.getFullUrl(endpoint);
     if (!params) return fullUrl;
 
-    const queryString = Object.entries(params)
-      .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
-      .join('&');
+    const parts: string[] = [];
+    for (const [key, value] of Object.entries(params)) {
+      if (Array.isArray(value)) {
+        for (const v of value) {
+          parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(v)}`);
+        }
+      } else {
+        parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
+      }
+    }
 
-    return queryString ? `${fullUrl}?${queryString}` : fullUrl;
+    return parts.length ? `${fullUrl}?${parts.join('&')}` : fullUrl;
   }
 
   /**
-   * Execute HTTP request with error handling
+   * Execute HTTP request with error handling.
+   * When tenantId is provided it is sent as the x-tenant-id header.
    */
-  private async request<T>(url: string, method: string, body?: unknown): Promise<T> {
+  private async request<T>(url: string, method: string, body?: unknown, tenantId?: string): Promise<T> {
     try {
       // Check rate limit
       await this.rateLimiter.checkLimit('api_requests');
@@ -69,6 +84,10 @@ export class BlackpointApiClient {
         'Authorization': `Bearer ${this.apiKey}`,
         'Content-Type': 'application/json',
       };
+
+      if (tenantId) {
+        headers['x-tenant-id'] = tenantId;
+      }
 
       const response = await fetch(url, {
         method,
