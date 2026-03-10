@@ -65,26 +65,26 @@ https://api.blackpointcyber.com/v1
 
 **Status:** 200 OK — confirmed returning real production data.
 
-**⚠️ IMPORTANT — Undocumented Requirements (discovered March 9, 2026):**
+**IMPORTANT — Undocumented Requirements (discovered March 9, 2026):**
 
 1. Requires `x-tenant-id` header — without it returns `400: x-tenant-id request header is required`
 2. Requires `class[]` query parameter as an array — without it returns `400: class must be an array`
 
-**Valid `class[]` enum values:**
+**Valid `class[]` enum values (4Refuel tenant):**
 
-| Class | Description | 4Refuel Count | Has Data |
+| Class | Description | Item Count | Has Data |
 |---|---|---|---|
-| `DEVICE` | Endpoints, servers, workstations | 331 | ✅ |
-| `SOFTWARE` | Installed software inventory | 58,847 | ✅ |
-| `USER` | User accounts (AD/M365) | 1,974 | ✅ |
-| `SOURCE` | Data collection sources (agent, ZTAC, M365) | 5 | ✅ |
-| `CONTAINER` | Containers | 0 | 🟡 empty |
-| `FRAMEWORK` | Frameworks | 0 | 🟡 empty |
-| `NETSTAT` | Network statistics | 0 | 🟡 empty |
-| `PERSON` | Person records | 0 | 🟡 empty |
-| `PROCESS` | Processes | 0 | 🟡 empty |
-| `SERVICE` | Services | 0 | 🟡 empty |
-| `SURVEY` | Survey data | 0 | 🟡 empty |
+| `DEVICE` | Endpoints, servers, workstations | 331 | YES |
+| `SOFTWARE` | Installed software inventory | 58,847 | YES |
+| `USER` | User accounts (AD/M365) | 1,974 | YES |
+| `SOURCE` | Data collection sources (agent, ZTAC, M365) | 5 | YES |
+| `CONTAINER` | Containers | 0 | Empty |
+| `FRAMEWORK` | Frameworks | 0 | Empty |
+| `NETSTAT` | Network statistics | 0 | Empty |
+| `PERSON` | Person records | 0 | Empty |
+| `PROCESS` | Processes | 0 | Empty |
+| `SERVICE` | Services | 0 | Empty |
+| `SURVEY` | Survey data | 0 | Empty |
 
 **Example request:**
 
@@ -121,13 +121,13 @@ Authorization: Bearer bpc_...
 
 ## 🔒 Access Denied — Endpoint Exists, Needs Role Permission Grant
 
-These endpoints **exist** in the API (confirmed by 403 vs 404 response) but our current API key role does not have access:
+These endpoints **exist** in the API (confirmed by 403 vs 404 response) but the current API key role does not have access:
 
 | Endpoint | HTTP Status | Error Message | Action Required |
 |---|---|---|---|
 | `GET /v1/incidents` | 403 | `Forbidden resource` | Request `incidents:read` role from Blackpoint |
-| `GET /v1/incidents?tenantId=...` | 403 | `Forbidden resource` | Same — role-based restriction |
-| `GET /v1/users` | 403 | `The current user does not have the roles required to perform this action` | Request `users:read` role from Blackpoint |
+| `GET /v1/incidents?tenantId=...` | 403 | `Forbidden resource` | Same role-based restriction |
+| `GET /v1/users` | 403 | `The current user does not have the roles required` | Request `users:read` role from Blackpoint |
 
 **Note:** Adding the `x-tenant-id` header does **not** resolve the 403 on these endpoints — this is a server-side RBAC restriction on the API key's assigned role.
 
@@ -135,7 +135,7 @@ These endpoints **exist** in the API (confirmed by 403 vs 404 response) but our 
 
 ## ❌ Not Found — Endpoints Do Not Exist (404)
 
-The following 77 endpoints were probed and definitively do not exist in the current API:
+The following endpoints were probed and definitively do not exist in the current API:
 
 **Alert / Detection / Threat endpoints (critical gap):**
 - `GET /v1/alerts` (all variants including query params)
@@ -204,9 +204,9 @@ The `/assets` endpoint requires both `x-tenant-id` header AND `class[]` array pa
 
 ### 5. No API Documentation Available
 
-- `GET /v1/openapi` → 404
-- `GET /v1/swagger` → 404
-- `GET /v1/docs` → 404
+- `GET /v1/openapi` — 404
+- `GET /v1/swagger` — 404
+- `GET /v1/docs` — 404
 
 No public OpenAPI spec is available. All endpoint discovery was done via manual probing.
 
@@ -236,7 +236,7 @@ x-tenant-id: {tenantId}
 ### Alert Monitoring
 
 Until the `/incidents` role is granted:
-- Use Blackpoint Cyber web portal for alert management
+- Use the Blackpoint Cyber web portal for alert management
 - Export alerts manually
 - Explore Blackpoint webhook/notification options
 
@@ -244,20 +244,121 @@ Until the `/incidents` role is granted:
 
 ## Report to Blackpoint: API Access Request
 
-**Date:** March 9, 2026  
-**Testing scope:** 83 endpoints probed against production API  
+**Date:** March 9, 2026
+**Testing scope:** 83 endpoints probed against production API
 **API key prefix:** `bpc_67ec14...`
 
 ### Access Needed
 
 | Priority | Endpoint | Current Status | Requested |
 |---|---|---|---|
-| 🔴 Critical | `GET /v1/incidents` | 403 Forbidden | Grant `incidents:read` role |
-| 🔴 Critical | Alert endpoints (`/alerts`, `/detections`, `/threats`) | 404 — endpoint doesn't exist | Request endpoint access or confirm alternative |
-| 🟡 High | `GET /v1/users` | 403 Forbidden | Grant `users:read` role |
-| 🟡 High | `GET /v1/tenants/:tenantId` | 404 | Confirm if individual tenant lookup is supported |
-| 🟢 Medium | OpenAPI/Swagger spec | 404 | Request API documentation |
-| 🟢 Low | Webhook/push notification for alerts | Unknown | Confirm if available and how to subscribe |
+| Critical | `GET /v1/incidents` | 403 Forbidden | Grant `incidents:read` role |
+| Critical | Alert endpoints (`/alerts`, `/detections`, `/threats`) | 404 — does not exist | Request endpoint access or confirm alternative |
+| High | `GET /v1/users` | 403 Forbidden | Grant `users:read` role |
+| High | `GET /v1/tenants/:tenantId` | 404 | Confirm if individual tenant lookup is supported |
+| Medium | OpenAPI/Swagger spec | 404 | Request API documentation |
+| Low | Webhook/push notification for alerts | Unknown | Confirm if available and how to subscribe |
+
+---
+
+## Contact
+
+For API access questions, contact Blackpoint Cyber support or your account representative.
+
+
+- `GET /v1/alerts`
+- `GET /v1/incidents`  
+- `GET /v1/tickets`
+- `GET /v1/cases`
+- `GET /v1/tenants/:tenantId`
+- `GET /v1/tenants/:tenantId/alerts`
+- `GET /v1/tenants/:tenantId/tickets`
+- `GET /v1/tenants/:tenantId/incidents`
+- `GET /v1/alerts?tenant_id={id}`
+- `GET /v1/detections`
+- `GET /v1/events`
+- `GET /v1/threats`
+- `GET /v1/security_events`
+- `GET /v1/soc_alerts`
+- `GET /v1/managed_detections`
+- `GET /v1/investigations`
+- `GET /v1/tenants/:tenantId/detections`
+- `GET /v1/tenants/:tenantId/events`
+- `GET /v1/tenants/:tenantId/agents`
+- `GET /v1/tenants/:tenantId/devices`
+- `GET /v1/tenants/:tenantId/endpoints`
+
+### ⚠️ 403 Forbidden
+
+- `GET /v1/incidents` - Returns 403 (endpoint may exist but access is restricted)
+
+## API Limitations
+
+### 1. No Individual Tenant Details
+
+- Cannot fetch details for a specific tenant by ID
+- Must fetch all tenants and filter client-side
+- Tenant list endpoint does not support filtering parameters
+
+### 2. No Alert/Incident Data
+
+- No access to alert or incident data through the API
+- SOC alert management must be done through Blackpoint portal
+- Cannot programmatically track alert lifecycle
+
+### 3. No Device/Endpoint Information
+
+- Cannot list protected endpoints per tenant
+- No access to SNAP agent deployment status
+- Cannot query device inventory
+
+### 4. Limited Pagination
+
+- Tenant endpoint does not appear to support pagination
+- All tenants returned in single response
+- May become issues with large tenant counts (100+)
+
+### 5. No Search or Filtering
+
+- No query parameters accepted for filtering
+- All filtering must be done client-side
+- Cannot search tenants by name or other criteria
+
+### 6. No Rate Limit Headers
+
+- API does not return `X-RateLimit-*` headers
+- Rate limits unknown and must be tested carefully
+- Implemented conservative 60 requests/minute in client
+
+## Workarounds
+
+### Tenant Details
+
+Since individual tenant endpoints don't exist:
+
+```typescript
+// Fetch all tenants
+const tenants = await apiClient.get('/tenants');
+
+// Filter client-side  
+const tenant = tenants.data.find(t => t.id === targetId);
+```
+
+### Alert Monitoring
+
+Since alert endpoints are unavailable:
+
+- Use Blackpoint Cyber web portal for alert management
+- Export alerts manually if needed
+- Consider using Blackpoint webhooks if available
+
+### Device Tracking
+
+Since device endpoints are unavailable:
+
+- Track SNAP agent deployments externally
+- Use tenant `snapAgentUrl` for installer access
+- Monitor via Blackpoint portal
 
 ## API Response Patterns
 

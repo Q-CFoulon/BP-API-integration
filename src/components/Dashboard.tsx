@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './Dashboard.css';
 
 // ---------------------------------------------------------------------------
@@ -87,6 +87,18 @@ async function loadAllAlertGroups(tenantId: string): Promise<AlertGroup[]> {
     skip += take;
   }
   return all;
+}
+
+async function loadAssetCount(tenantId: string, cls: 'DEVICE' | 'USER'): Promise<number> {
+  try {
+    const data = await apiFetch<{ meta: { totalItems: number } }>(
+      `/v1/assets?class[]=${cls}&pageSize=1`,
+      tenantId
+    );
+    return data.meta?.totalItems ?? 0;
+  } catch {
+    return 0;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -382,20 +394,305 @@ interface TenantCardData {
   error: string | null;
 }
 
+interface AssetCountData {
+  devices: number;
+  users: number;
+  loading: boolean;
+}
+
+type Tab = 'overview' | 'detections' | 'tenants';
+type SortCol = 'created' | 'riskScore' | 'alertCount';
+type SortDir = 'asc' | 'desc';
+type SeverityFilter = 'ALL' | 'critical' | 'high' | 'medium' | 'low';
+type StatusFilter = 'ALL' | 'OPEN' | 'RESOLVED';
+
+// ---------------------------------------------------------------------------
+// Detections View (cross-tenant alert groups with filters)
+// ---------------------------------------------------------------------------
+
+interface DetectionsViewProps {
+  tenants: Tenant[];
+  tenantData: Map<string, TenantCardData>;
+}
+
+type AnnotatedGroup = AlertGroup & { tenantName: string };
+
+const DetectionsView: React.FC<DetectionsViewProps> = ({ tenants, tenantData }) => {
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
+  const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('ALL');
+  const [searchText, setSearchText] = useState('');
+  const [tenantGroups, setTenantGroups] = useState<AlertGroup[]>([]);
+  const [tenantLoading, setTenantLoading] = useState(false);
+  const [tenantError, setTenantError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [sortCol, setSortCol] = useState<SortCol>('created');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+
+  useEffect(() => {
+    if (selectedTenantId === 'all') {
+      setTenantGroups([]);
+      return;
+    }
+    setTenantLoading(true);
+    setTenantError(null);
+    setExpanded(null);
+    loadAllAlertGroups(selectedTenantId)
+      .then(setTenantGroups)
+      .catch((e: Error) => setTenantError(e.message))
+      .finally(() => setTenantLoading(false));
+  }, [selectedTenantId]);
+
+  let groups: AnnotatedGroup[];
+  if (selectedTenantId === 'all') {
+    groups = [];
+    for (const [tid, data] of tenantData) {
+      const ten = tenants.find(t => t.id === tid);
+      data.openGroups.forEach(g => groups.push({ ...g, tenantName: ten?.name ?? tid }));
+    }
+  } else {
+    const ten = tenants.find(t => t.id === selectedTenantId);
+    groups = tenantGroups.map(g => ({ ...g, tenantName: ten?.name ?? selectedTenantId }));
+  }
+
+  if (statusFilter !== 'ALL') groups = groups.filter(g => g.status === statusFilter);
+  if (severityFilter !== 'ALL') groups = groups.filter(g => riskToSeverity(g.riskScore) === severityFilter);
+  if (searchText.trim()) {
+    const q = searchText.toLowerCase();
+    groups = groups.filter(g =>
+      g.alertTypes.some(t => t.toLowerCase().includes(q)) ||
+      g.groupKey.toLowerCase().includes(q) ||
+      g.tenantName.toLowerCase().includes(q)
+    );
+  }
+
+  const sorted = [...groups].sort((a, b) => {
+    let cmp = 0;
+    if (sortCol === 'created') cmp = new Date(a.created).getTime() - new Date(b.created).getTime();
+    else if (sortCol === 'riskScore') cmp = a.riskScore - b.riskScore;
+    else cmp = a.alertCount - b.alertCount;
+    return sortDir === 'desc' ? -cmp : cmp;
+  });
+
+  function toggleSort(col: SortCol) {
+    if (sortCol === col) setSortDir(d => (d === 'desc' ? 'asc' : 'desc'));
+    else { setSortCol(col); setSortDir('desc'); }
+  }
+
+  const severityCounts = { critical: 0, high: 0, medium: 0, low: 0 };
+  groups.forEach(g => { severityCounts[riskToSeverity(g.riskScore)]++; });
+
+  return (
+    <div>
+      {/* Severity summary pills — click to filter */}
+      <div className="severity-summary">
+        {(['critical', 'high', 'medium', 'low'] as const).map(sev => (
+          <button
+            key={sev}
+            className={`sev-pill ${sev}${severityFilter === sev ? ' active' : ''}`}
+            onClick={() => setSeverityFilter(severityFilter === sev ? 'ALL' : sev)}
+          >
+            <span className="sev-count">{severityCounts[sev]}</span>
+            <span className="sev-label">{sev}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Filter bar */}
+      <div className="filter-bar">
+        <select
+          value={selectedTenantId}
+          onChange={e => { setSelectedTenantId(e.target.value); setExpanded(null); }}
+          className="filter-select"
+        >
+          <option value="all">All Tenants (open preview)</option>
+          {tenants.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select>
+        <select
+          value={statusFilter}
+          onChange={e => setStatusFilter(e.target.value as StatusFilter)}
+          className="filter-select"
+        >
+          <option value="ALL">All Statuses</option>
+          <option value="OPEN">Open</option>
+          <option value="RESOLVED">Resolved</option>
+        </select>
+        <input
+          className="filter-input"
+          type="text"
+          placeholder="Search alert types, tenants…"
+          value={searchText}
+          onChange={e => setSearchText(e.target.value)}
+        />
+        {searchText && (
+          <button className="filter-clear" onClick={() => setSearchText('')}>✕</button>
+        )}
+      </div>
+
+      {/* Sort + count row */}
+      <div className="detections-header">
+        <span className="detections-count">
+          {sorted.length} detection {sorted.length === 1 ? 'group' : 'groups'}
+          {selectedTenantId === 'all' && (
+            <span className="preview-note"> — open preview only; select a tenant to load full history</span>
+          )}
+        </span>
+        <div className="sort-controls">
+          <span>Sort:</span>
+          {(['created', 'riskScore', 'alertCount'] as const).map(col => (
+            <button
+              key={col}
+              className={`sort-btn${sortCol === col ? ' active' : ''}`}
+              onClick={() => toggleSort(col)}
+            >
+              {col === 'created' ? 'Date' : col === 'riskScore' ? 'Risk' : 'Alerts'}
+              {sortCol === col && <span>{sortDir === 'desc' ? ' ↓' : ' ↑'}</span>}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {tenantLoading && <div className="loading-state">Loading detection groups…</div>}
+      {tenantError && <div className="error-message">⚠ {tenantError}</div>}
+
+      {sorted.length === 0 && !tenantLoading && (
+        <div className="empty-state">No detection groups match the current filters.</div>
+      )}
+
+      <div className="detections-list">
+        {sorted.map(group => {
+          const severity = riskToSeverity(group.riskScore);
+          const age = getAlertAge(group.created);
+          const isOpen = group.status === 'OPEN';
+          const isExpanded = expanded === group.id;
+          return (
+            <div
+              key={group.id}
+              className={`detection-row${isExpanded ? ' expanded' : ''}`}
+              data-severity={severity}
+              onClick={() => setExpanded(isExpanded ? null : group.id)}
+            >
+              <div className="detection-row-main">
+                <div className="severity-indicator" data-severity={severity} />
+                <div className="detection-info">
+                  <div className="detection-title">
+                    {group.alertTypes.length > 0 ? group.alertTypes.join(', ') : group.groupKey}
+                  </div>
+                  <div className="detection-meta">
+                    <span className="tenant-tag">{group.tenantName}</span>
+                    <span className="meta-sep">•</span>
+                    <span>{fmt(group.created)}</span>
+                    <span className="meta-sep">•</span>
+                    <span>{group.alertCount} alert{group.alertCount !== 1 ? 's' : ''}</span>
+                  </div>
+                </div>
+                <div className="detection-badges">
+                  <span className={`severity-badge ${severity}`}>{severity}</span>
+                  <span className={`status-pill ${isOpen ? 'open' : 'resolved'}`}>{group.status}</span>
+                  <span className="age-chip" data-age={age.ageCategory}>{age.text}</span>
+                  <span className="risk-chip">⚡ {group.riskScore}</span>
+                </div>
+                <span className="expand-arrow">{isExpanded ? '▼' : '▶'}</span>
+              </div>
+              {isExpanded && (
+                <div className="detection-expanded" onClick={e => e.stopPropagation()}>
+                  <div className="expanded-cols">
+                    <div className="expanded-col">
+                      <div className="exp-section-title">DETECTION DETAILS</div>
+                      <div className="exp-row">
+                        <span className="exp-label">Group ID</span>
+                        <span className="exp-value mono blue">{group.id}</span>
+                      </div>
+                      <div className="exp-row">
+                        <span className="exp-label">Group Key</span>
+                        <span className="exp-value mono">{group.groupKey}</span>
+                      </div>
+                      <div className="exp-row">
+                        <span className="exp-label">Ticket ID</span>
+                        <span className="exp-value mono orange">{group.ticketId || '—'}</span>
+                      </div>
+                      <div className="exp-row">
+                        <span className="exp-label">Alert Count</span>
+                        <span className="exp-value">{group.alertCount}</span>
+                      </div>
+                      <div className="exp-row">
+                        <span className="exp-label">Tenant</span>
+                        <span className="exp-value">{group.tenantName}</span>
+                      </div>
+                      <div className="exp-row">
+                        <span className="exp-label">Created</span>
+                        <span className="exp-value">{fmt(group.created)}</span>
+                      </div>
+                      {group.updated && (
+                        <div className="exp-row">
+                          <span className="exp-label">Updated</span>
+                          <span className="exp-value">{fmt(group.updated)}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="expanded-col">
+                      <div className="exp-section-title">RISK SCORE</div>
+                      <div className="risk-score-display">
+                        <span className={`severity-badge ${severity}`}>{severity.toUpperCase()}</span>
+                        <span className="risk-number">{group.riskScore}/100</span>
+                      </div>
+                      <div className="score-bar-lg">
+                        <div className={`score-fill ${severity}`} style={{ width: `${group.riskScore}%` }} />
+                      </div>
+                      {group.alertTypes.length > 0 && (
+                        <>
+                          <div className="exp-section-title" style={{ marginTop: 16 }}>ALERT TYPES</div>
+                          <div className="ioc-tags">
+                            {group.alertTypes.map((t, i) => (
+                              <span key={i} className="ioc-tag">{t}</span>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    {group.alert && Object.keys(group.alert).length > 0 && (
+                      <div className="expanded-col">
+                        <div className="exp-section-title">🖥️ DETECTION DATA</div>
+                        {Object.entries(group.alert)
+                          .filter(([, v]) => v !== null && v !== undefined && v !== '')
+                          .map(([k, v]) => (
+                            <div key={k} className="exp-row">
+                              <span className="exp-label">{k}</span>
+                              <span className="exp-value mono">
+                                {typeof v === 'object' ? JSON.stringify(v) : String(v)}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 // ---------------------------------------------------------------------------
 // Main Dashboard
 // ---------------------------------------------------------------------------
 
 const Dashboard: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [tenantData, setTenantData] = useState<Map<string, TenantCardData>>(new Map());
+  const [assetData, setAssetData] = useState<Map<string, AssetCountData>>(new Map());
   const [tenantsLoading, setTenantsLoading] = useState(true);
   const [tenantsError, setTenantsError] = useState<string | null>(null);
+  const assetsLoadedRef = useRef(false);
 
   const noApiKey = !API_KEY;
 
-  // Load tenants on mount
+  // Load tenants + alert previews on mount
   useEffect(() => {
     if (noApiKey) return;
     loadTenants()
@@ -435,25 +732,46 @@ const Dashboard: React.FC = () => {
       .finally(() => setTenantsLoading(false));
   }, [noApiKey]);
 
+  // Lazy-load asset counts when Tenants tab is first opened
+  useEffect(() => {
+    if (activeTab !== 'tenants' || assetsLoadedRef.current || tenants.length === 0) return;
+    assetsLoadedRef.current = true;
+    tenants.forEach(t => {
+      setAssetData(prev => {
+        const next = new Map(prev);
+        next.set(t.id, { devices: 0, users: 0, loading: true });
+        return next;
+      });
+      Promise.all([loadAssetCount(t.id, 'DEVICE'), loadAssetCount(t.id, 'USER')])
+        .then(([devices, users]) => {
+          setAssetData(prev => {
+            const next = new Map(prev);
+            next.set(t.id, { devices, users, loading: false });
+            return next;
+          });
+        })
+        .catch(() => {
+          setAssetData(prev => {
+            const next = new Map(prev);
+            next.set(t.id, { devices: 0, users: 0, loading: false });
+            return next;
+          });
+        });
+    });
+  }, [activeTab, tenants]);
+
   if (selectedTenant) {
-    return (
-      <TenantDetailPage
-        tenant={selectedTenant}
-        onBack={() => setSelectedTenant(null)}
-      />
-    );
+    return <TenantDetailPage tenant={selectedTenant} onBack={() => setSelectedTenant(null)} />;
   }
 
-  // --- KPI calculations ---
-  const totalTenants = tenants.length;
+  // Computed values for KPI strip
   const allTenantData = Array.from(tenantData.values());
+  const totalTenants = tenants.length;
   const totalOpen = allTenantData.reduce((s, d) => s + d.totalOpen, 0);
   const criticalCount = allTenantData.reduce(
     (s, d) => s + d.openGroups.filter(g => riskToSeverity(g.riskScore) === 'critical').length,
     0
   );
-
-  // Oldest open alert across all tenants
   const allOpenGroups = allTenantData.flatMap(d => d.openGroups);
   const oldestGroup = allOpenGroups.length
     ? allOpenGroups.reduce((oldest, g) =>
@@ -461,11 +779,8 @@ const Dashboard: React.FC = () => {
       )
     : null;
   const oldestAge = oldestGroup ? getAlertAge(oldestGroup.created) : null;
-  const oldestTenant = oldestGroup
-    ? tenants.find(t => t.id === oldestGroup.customerId)
-    : null;
+  const oldestTenant = oldestGroup ? tenants.find(t => t.id === oldestGroup.customerId) : null;
 
-  // Sort tenants by priority score (highest first)
   const sortedTenants = [...tenants].sort((a, b) => {
     const aData = tenantData.get(a.id);
     const bData = tenantData.get(b.id);
@@ -474,10 +789,15 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="dashboard-container">
-      {/* Header */}
+      {/* ── Header + Tabs ── */}
       <div className="dashboard-header">
         <div className="dashboard-header-content">
-          <h1 className="dashboard-title">🛡️ Blackpoint Tenant Monitor</h1>
+          <div className="header-top">
+            <h1 className="dashboard-title">🛡️ Blackpoint SOC Monitor</h1>
+            <span className={`header-status ${tenantsLoading ? 'loading' : tenantsError ? 'error' : 'ok'}`}>
+              {tenantsLoading ? 'Connecting…' : tenantsError ? '⚠ API Error' : '● Live'}
+            </span>
+          </div>
 
           {noApiKey && (
             <div className="error-message" style={{ marginTop: 12 }}>
@@ -486,252 +806,306 @@ const Dashboard: React.FC = () => {
             </div>
           )}
 
-          <div className="kpi-grid">
-            <div className="kpi-card">
-              <div className="kpi-label">Monitored Tenants</div>
-              <div className="kpi-value green">
-                {tenantsLoading ? '…' : totalTenants}
-              </div>
-            </div>
-            <div className="kpi-card">
-              <div className="kpi-label">Open Detections</div>
-              <div className="kpi-value orange">{totalOpen}</div>
-            </div>
-            <div className="kpi-card">
-              <div className="kpi-label">Critical Risk</div>
-              <div className="kpi-value red">{criticalCount}</div>
-            </div>
-            <div className={`kpi-card ${oldestAge && oldestAge.hours >= 24 ? 'highlight' : ''}`}>
-              <div className="kpi-label">Oldest Open (preview)</div>
-              <div className="kpi-value" data-age={oldestAge?.ageCategory || 'good'}>
-                {oldestAge ? oldestAge.text : '—'}
-              </div>
-              {oldestTenant && (
-                <div className="kpi-subtitle">{oldestTenant.name}</div>
-              )}
-            </div>
-          </div>
+          <nav className="tab-nav">
+            {(
+              [
+                { id: 'overview', label: '📊 Overview' },
+                { id: 'detections', label: '🚨 Detections' },
+                { id: 'tenants', label: '🏢 Tenants' },
+              ] as const
+            ).map(tab => (
+              <button
+                key={tab.id}
+                className={`tab-btn${activeTab === tab.id ? ' active' : ''}`}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
         </div>
       </div>
 
       <div className="dashboard-content">
-        {tenantsLoading && <div className="loading-state">Loading tenants…</div>}
-        {tenantsError && <div className="error-message">⚠ {tenantsError}</div>}
 
-        {/* Priority Queue */}
-        {sortedTenants.some(t => (tenantData.get(t.id)?.totalOpen ?? 0) > 0) && (
-          <div className="priority-section">
-            <h2 className="section-title">
-              🚨 Remediation Priority Queue
-              <span className="section-subtitle">(sorted by urgency)</span>
-            </h2>
-            <div className="table-container">
-              <table className="priority-table">
-                <thead>
-                  <tr className="table-header-row">
-                    <th className="table-header">PRIORITY</th>
-                    <th className="table-header">CLIENT</th>
-                    <th className="table-header">OLDEST (PREVIEW)</th>
-                    <th className="table-header">SEVERITY</th>
-                    <th className="table-header">OPEN DETECTIONS</th>
-                    <th className="table-header">PRIORITY SCORE</th>
-                    <th className="table-header text-right">ACTION</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedTenants.map((tenant, index) => {
-                    const data = tenantData.get(tenant.id);
-                    const open = data?.totalOpen ?? 0;
-                    if (open === 0) return null;
-
-                    const openGroups = data?.openGroups ?? [];
-                    const oldest = openGroups.length
-                      ? openGroups.reduce((o, g) =>
-                          new Date(g.created) < new Date(o.created) ? g : o
-                        )
-                      : null;
-                    const age = oldest ? getAlertAge(oldest.created) : null;
-                    const topSeverity = oldest ? riskToSeverity(oldest.riskScore) : 'low';
-                    const score = priorityScore(openGroups);
-                    const criticalCnt = openGroups.filter(g => riskToSeverity(g.riskScore) === 'critical').length;
-
-                    return (
-                      <tr
-                        key={tenant.id}
-                        className={`table-row ${index === 0 ? 'top-priority' : ''}`}
-                        onClick={() => setSelectedTenant(tenant)}
-                      >
-                        <td className="table-cell">
-                          <div className={`priority-badge ${index === 0 ? 'first' : index === 1 ? 'second' : 'default'}`}>
-                            {index + 1}
-                          </div>
-                        </td>
-                        <td className="table-cell">
-                          <div className="client-name">{tenant.name}</div>
-                          {tenant.domain && <div className="client-domain">{tenant.domain}</div>}
-                        </td>
-                        <td className="table-cell" data-age={age?.ageCategory}>
-                          {age ? (
-                            <div className="age-display">
-                              <span className="age-value">{age.text}</span>
-                              {age.hours >= 24 && <span className="overdue-badge">OVERDUE</span>}
-                            </div>
-                          ) : data?.loading ? '…' : '—'}
-                        </td>
-                        <td className="table-cell">
-                          {oldest && (
-                            <span className={`severity-badge ${topSeverity}`}>{topSeverity}</span>
-                          )}
-                        </td>
-                        <td className="table-cell">
-                          <div className="alerts-count">
-                            <span className="count-value">{open}</span>
-                            {criticalCnt > 0 && (
-                              <span className="critical-note">({criticalCnt} critical)</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="table-cell">
-                          <div className="score-display">
-                            <div className="score-bar">
-                              <div
-                                className={`score-fill ${score > 300 ? 'critical' : score > 150 ? 'high' : 'medium'}`}
-                                style={{ width: `${Math.min(100, score / 5)}%` }}
-                              ></div>
-                            </div>
-                            <span className="score-value">{score}</span>
-                          </div>
-                        </td>
-                        <td className="table-cell text-right">
-                          <button
-                            onClick={e => { e.stopPropagation(); setSelectedTenant(tenant); }}
-                            className="btn-primary"
-                          >
-                            Investigate →
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* Tenant Grid */}
-        {!tenantsLoading && tenants.length > 0 && (
+        {/* ── Overview Tab ── */}
+        {activeTab === 'overview' && (
           <>
-            <h2 className="section-title large">Monitored Tenants</h2>
-            <div className="tenant-grid">
-              {tenants.map(tenant => {
-                const data = tenantData.get(tenant.id);
-                const openGroups = data?.openGroups ?? [];
-                const totalOpen = data?.totalOpen ?? 0;
-                const criticalGroups = openGroups.filter(g => riskToSeverity(g.riskScore) === 'critical');
-                const oldest = openGroups.length
-                  ? openGroups.reduce((o, g) =>
-                      new Date(g.created) < new Date(o.created) ? g : o
-                    )
-                  : null;
-                const oldestAge = oldest ? getAlertAge(oldest.created) : null;
-
-                return (
-                  <div
-                    key={tenant.id}
-                    onClick={() => setSelectedTenant(tenant)}
-                    className={`tenant-card ${criticalGroups.length > 0 ? 'critical' : totalOpen > 0 ? 'warning' : ''}`}
-                  >
-                    {!data?.loading && totalOpen > 0 && (
-                      <div className={`card-alert-badge ${criticalGroups.length > 0 ? 'critical' : 'warning'}`}>
-                        {totalOpen}
-                      </div>
-                    )}
-
-                    <div className="card-header">
-                      <div className="tenant-avatar">{tenant.name.substring(0, 2)}</div>
-                      <div className="tenant-info">
-                        <h3 className="tenant-name">{tenant.name}</h3>
-                        {tenant.domain && <p className="tenant-domain">{tenant.domain}</p>}
-                      </div>
-                    </div>
-
-                    <div className="card-stats-grid">
-                      <div className="stat-item">
-                        <div className="stat-label">Status</div>
-                        <div className="stat-value green">● {tenant.status}</div>
-                      </div>
-                      <div className="stat-item">
-                        <div className="stat-label">Open</div>
-                        <div className={`stat-value bold ${totalOpen > 0 ? 'orange' : 'green'}`}>
-                          {data?.loading ? '…' : totalOpen}
-                        </div>
-                      </div>
-                      <div className="stat-item">
-                        <div className="stat-label">Critical</div>
-                        <div className={`stat-value bold ${criticalGroups.length > 0 ? 'red' : 'green'}`}>
-                          {data?.loading ? '…' : criticalGroups.length}
-                        </div>
-                      </div>
-                    </div>
-
-                    {!data?.loading && oldestAge && oldest && (
-                      <div
-                        className={`oldest-ticket-box ${oldestAge.hours >= 24 ? 'overdue' : ''}`}
-                        data-age={oldestAge.ageCategory}
-                      >
-                        <div className="oldest-ticket-label">OLDEST OPEN DETECTION</div>
-                        <div className="oldest-ticket-content">
-                          <div>
-                            <span className="oldest-ticket-age">{oldestAge.text}</span>
-                            {oldestAge.hours >= 24 && (
-                              <span className="overdue-badge small">OVERDUE</span>
-                            )}
-                          </div>
-                          <span className={`severity-badge-small ${riskToSeverity(oldest.riskScore)}`}>
-                            {riskToSeverity(oldest.riskScore)}
-                          </span>
-                        </div>
-                        <div className="oldest-ticket-title">
-                          {oldest.alertTypes.length > 0 ? oldest.alertTypes.join(', ') : oldest.groupKey}
-                        </div>
-                      </div>
-                    )}
-
-                    {!data?.loading && !oldest && (
-                      <div className="oldest-ticket-box clear">
-                        <span className="clear-text">✓ No open detections</span>
-                      </div>
-                    )}
-
-                    {data?.loading && (
-                      <div className="oldest-ticket-box clear">
-                        <span className="clear-text">Loading…</span>
-                      </div>
-                    )}
-
-                    {data?.error && (
-                      <div className="oldest-ticket-box" style={{ borderColor: '#f97316' }}>
-                        <span style={{ color: '#f97316', fontSize: 12 }}>⚠ {data.error}</span>
-                      </div>
-                    )}
-
-                    <div className="card-footer">
-                      Created: {fmtDate(tenant.created)}
-                    </div>
-
-                    <button
-                      onClick={e => { e.stopPropagation(); setSelectedTenant(tenant); }}
-                      className="btn-primary full-width"
-                    >
-                      View Details →
-                    </button>
-                  </div>
-                );
-              })}
+            <div className="kpi-grid">
+              <div className="kpi-card">
+                <div className="kpi-label">Monitored Tenants</div>
+                <div className="kpi-value green">{tenantsLoading ? '…' : totalTenants}</div>
+              </div>
+              <div className="kpi-card">
+                <div className="kpi-label">Open Detections</div>
+                <div className="kpi-value orange">{totalOpen}</div>
+              </div>
+              <div className="kpi-card">
+                <div className="kpi-label">Critical Risk</div>
+                <div className="kpi-value red">{criticalCount}</div>
+              </div>
+              <div className={`kpi-card ${oldestAge && oldestAge.hours >= 24 ? 'highlight' : ''}`}>
+                <div className="kpi-label">Oldest Open (preview)</div>
+                <div className="kpi-value" data-age={oldestAge?.ageCategory || 'good'}>
+                  {oldestAge ? oldestAge.text : '—'}
+                </div>
+                {oldestTenant && <div className="kpi-subtitle">{oldestTenant.name}</div>}
+              </div>
             </div>
+
+            {tenantsLoading && <div className="loading-state">Loading tenants…</div>}
+            {tenantsError && <div className="error-message">⚠ {tenantsError}</div>}
+
+            {sortedTenants.some(t => (tenantData.get(t.id)?.totalOpen ?? 0) > 0) && (
+              <div className="priority-section">
+                <h2 className="section-title">
+                  🚨 Remediation Priority Queue
+                  <span className="section-subtitle">(sorted by urgency)</span>
+                </h2>
+                <div className="table-container">
+                  <table className="priority-table">
+                    <thead>
+                      <tr className="table-header-row">
+                        <th className="table-header">PRIORITY</th>
+                        <th className="table-header">CLIENT</th>
+                        <th className="table-header">OLDEST (PREVIEW)</th>
+                        <th className="table-header">SEVERITY</th>
+                        <th className="table-header">OPEN DETECTIONS</th>
+                        <th className="table-header">PRIORITY SCORE</th>
+                        <th className="table-header text-right">ACTION</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedTenants.map((tenant, index) => {
+                        const data = tenantData.get(tenant.id);
+                        const open = data?.totalOpen ?? 0;
+                        if (open === 0) return null;
+
+                        const openGroups = data?.openGroups ?? [];
+                        const oldest = openGroups.length
+                          ? openGroups.reduce((o, g) =>
+                              new Date(g.created) < new Date(o.created) ? g : o
+                            )
+                          : null;
+                        const age = oldest ? getAlertAge(oldest.created) : null;
+                        const topSeverity = oldest ? riskToSeverity(oldest.riskScore) : 'low';
+                        const score = priorityScore(openGroups);
+                        const criticalCnt = openGroups.filter(g => riskToSeverity(g.riskScore) === 'critical').length;
+
+                        return (
+                          <tr
+                            key={tenant.id}
+                            className={`table-row ${index === 0 ? 'top-priority' : ''}`}
+                            onClick={() => setSelectedTenant(tenant)}
+                          >
+                            <td className="table-cell">
+                              <div className={`priority-badge ${index === 0 ? 'first' : index === 1 ? 'second' : 'default'}`}>
+                                {index + 1}
+                              </div>
+                            </td>
+                            <td className="table-cell">
+                              <div className="client-name">{tenant.name}</div>
+                              {tenant.domain && <div className="client-domain">{tenant.domain}</div>}
+                            </td>
+                            <td className="table-cell" data-age={age?.ageCategory}>
+                              {age ? (
+                                <div className="age-display">
+                                  <span className="age-value">{age.text}</span>
+                                  {age.hours >= 24 && <span className="overdue-badge">OVERDUE</span>}
+                                </div>
+                              ) : data?.loading ? '…' : '—'}
+                            </td>
+                            <td className="table-cell">
+                              {oldest && (
+                                <span className={`severity-badge ${topSeverity}`}>{topSeverity}</span>
+                              )}
+                            </td>
+                            <td className="table-cell">
+                              <div className="alerts-count">
+                                <span className="count-value">{open}</span>
+                                {criticalCnt > 0 && (
+                                  <span className="critical-note">({criticalCnt} critical)</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="table-cell">
+                              <div className="score-display">
+                                <div className="score-bar">
+                                  <div
+                                    className={`score-fill ${score > 300 ? 'critical' : score > 150 ? 'high' : 'medium'}`}
+                                    style={{ width: `${Math.min(100, score / 5)}%` }}
+                                  />
+                                </div>
+                                <span className="score-value">{score}</span>
+                              </div>
+                            </td>
+                            <td className="table-cell text-right">
+                              <button
+                                onClick={e => { e.stopPropagation(); setSelectedTenant(tenant); }}
+                                className="btn-primary"
+                              >
+                                Investigate →
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {!tenantsLoading && totalOpen === 0 && tenants.length > 0 && (
+              <div className="empty-state large">✓ No open detections across all tenants</div>
+            )}
           </>
         )}
+
+        {/* ── Detections Tab ── */}
+        {activeTab === 'detections' && (
+          <>
+            <h2 className="section-title large">🚨 Detection Groups</h2>
+            <DetectionsView tenants={tenants} tenantData={tenantData} />
+          </>
+        )}
+
+        {/* ── Tenants Tab ── */}
+        {activeTab === 'tenants' && (
+          <>
+            <h2 className="section-title large">🏢 Monitored Tenants</h2>
+            {tenantsLoading && <div className="loading-state">Loading tenants…</div>}
+            {tenantsError && <div className="error-message">⚠ {tenantsError}</div>}
+            {!tenantsLoading && tenants.length > 0 && (
+              <div className="tenant-grid">
+                {tenants.map(tenant => {
+                  const data = tenantData.get(tenant.id);
+                  const assets = assetData.get(tenant.id);
+                  const openGroups = data?.openGroups ?? [];
+                  const tenantTotalOpen = data?.totalOpen ?? 0;
+                  const criticalGroups = openGroups.filter(g => riskToSeverity(g.riskScore) === 'critical');
+                  const oldest = openGroups.length
+                    ? openGroups.reduce((o, g) =>
+                        new Date(g.created) < new Date(o.created) ? g : o
+                      )
+                    : null;
+                  const oldestAge = oldest ? getAlertAge(oldest.created) : null;
+
+                  return (
+                    <div
+                      key={tenant.id}
+                      onClick={() => setSelectedTenant(tenant)}
+                      className={`tenant-card ${criticalGroups.length > 0 ? 'critical' : tenantTotalOpen > 0 ? 'warning' : ''}`}
+                    >
+                      {!data?.loading && tenantTotalOpen > 0 && (
+                        <div className={`card-alert-badge ${criticalGroups.length > 0 ? 'critical' : 'warning'}`}>
+                          {tenantTotalOpen}
+                        </div>
+                      )}
+
+                      <div className="card-header">
+                        <div className="tenant-avatar">{tenant.name.substring(0, 2)}</div>
+                        <div className="tenant-info">
+                          <h3 className="tenant-name">{tenant.name}</h3>
+                          {tenant.domain && <p className="tenant-domain">{tenant.domain}</p>}
+                        </div>
+                      </div>
+
+                      <div className="card-stats-grid">
+                        <div className="stat-item">
+                          <div className="stat-label">Status</div>
+                          <div className="stat-value green">● {tenant.status}</div>
+                        </div>
+                        <div className="stat-item">
+                          <div className="stat-label">Open</div>
+                          <div className={`stat-value bold ${tenantTotalOpen > 0 ? 'orange' : 'green'}`}>
+                            {data?.loading ? '…' : tenantTotalOpen}
+                          </div>
+                        </div>
+                        <div className="stat-item">
+                          <div className="stat-label">Critical</div>
+                          <div className={`stat-value bold ${criticalGroups.length > 0 ? 'red' : 'green'}`}>
+                            {data?.loading ? '…' : criticalGroups.length}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Asset counts — lazy loaded when tab opens */}
+                      <div className="asset-counts">
+                        <div className="asset-item">
+                          <span className="asset-icon">🖥️</span>
+                          <span className="asset-value">
+                            {assets?.loading ? '…' : assets ? assets.devices.toLocaleString() : '—'}
+                          </span>
+                          <span className="asset-label">devices</span>
+                        </div>
+                        <div className="asset-sep" />
+                        <div className="asset-item">
+                          <span className="asset-icon">👤</span>
+                          <span className="asset-value">
+                            {assets?.loading ? '…' : assets ? assets.users.toLocaleString() : '—'}
+                          </span>
+                          <span className="asset-label">users</span>
+                        </div>
+                      </div>
+
+                      {!data?.loading && oldestAge && oldest && (
+                        <div
+                          className={`oldest-ticket-box ${oldestAge.hours >= 24 ? 'overdue' : ''}`}
+                          data-age={oldestAge.ageCategory}
+                        >
+                          <div className="oldest-ticket-label">OLDEST OPEN DETECTION</div>
+                          <div className="oldest-ticket-content">
+                            <div>
+                              <span className="oldest-ticket-age">{oldestAge.text}</span>
+                              {oldestAge.hours >= 24 && (
+                                <span className="overdue-badge small">OVERDUE</span>
+                              )}
+                            </div>
+                            <span className={`severity-badge-small ${riskToSeverity(oldest.riskScore)}`}>
+                              {riskToSeverity(oldest.riskScore)}
+                            </span>
+                          </div>
+                          <div className="oldest-ticket-title">
+                            {oldest.alertTypes.length > 0 ? oldest.alertTypes.join(', ') : oldest.groupKey}
+                          </div>
+                        </div>
+                      )}
+
+                      {!data?.loading && !oldest && (
+                        <div className="oldest-ticket-box clear">
+                          <span className="clear-text">✓ No open detections</span>
+                        </div>
+                      )}
+
+                      {data?.loading && (
+                        <div className="oldest-ticket-box clear">
+                          <span className="clear-text">Loading…</span>
+                        </div>
+                      )}
+
+                      {data?.error && (
+                        <div className="oldest-ticket-box" style={{ borderColor: '#f97316' }}>
+                          <span style={{ color: '#f97316', fontSize: 12 }}>⚠ {data.error}</span>
+                        </div>
+                      )}
+
+                      <div className="card-footer">Created: {fmtDate(tenant.created)}</div>
+
+                      <button
+                        onClick={e => { e.stopPropagation(); setSelectedTenant(tenant); }}
+                        className="btn-primary full-width"
+                      >
+                        View Details →
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+
       </div>
     </div>
   );
