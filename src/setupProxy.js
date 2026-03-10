@@ -1,0 +1,17 @@
+/**
+ * CRA dev-server proxy — forwards /v1/* requests to the CompassOne API.
+ * This avoids CORS issues when running `npm run dashboard` locally.
+ * The Authorization / x-tenant-id headers sent by the browser are passed through unchanged.
+ */
+const { createProxyMiddleware } = require('http-proxy-middleware');
+
+module.exports = function (app) {
+  app.use(
+    '/v1',
+    createProxyMiddleware({
+      target: 'https://api.blackpointcyber.com',
+      changeOrigin: true,
+      logLevel: 'warn',
+    })
+  );
+};

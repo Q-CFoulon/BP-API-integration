@@ -1,415 +1,160 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './Dashboard.css';
 
-// Inline types
+// ---------------------------------------------------------------------------
+// Types — matching CompassOne API v1.4.0 spec
+// ---------------------------------------------------------------------------
+
 interface Tenant {
   id: string;
   name: string;
-  domain: string;
+  domain: string | null;
   created: string;
+  status: string;
   enableDeliveryEmail: boolean;
+  description: string | null;
+  accountId: string | null;
+  industryType: string;
+  informationalAlertsEmails: string[];
+  mdrReportsEmails: string[];
+  darkWebAlertsEmails: string[];
 }
 
-interface UserInfo {
-  username: string;
-  displayName: string;
-  email: string;
-  department: string;
-  role: string;
-  lastLogin: string;
-}
-
-interface MachineInfo {
-  hostname: string;
-  ipAddress: string;
-  macAddress: string;
-  os: string;
-  osVersion: string;
-  lastSeen: string;
-  location: string;
-  assetTag: string;
-}
-
-interface TimelineEvent {
-  timestamp: string;
-  event: string;
-  actor: string;
-  details: string;
-}
-
-interface ActionTaken {
-  timestamp: string;
-  action: string;
-  performedBy: string;
-  result: string;
-  notes: string;
-}
-
-interface RelatedActivity {
-  timestamp: string;
-  type: string;
-  description: string;
-  correlation: string;
-}
-
-interface MockAlert {
+interface AlertGroup {
   id: string;
-  title: string;
-  severity: 'critical' | 'high' | 'medium' | 'low';
-  status: 'open' | 'investigating' | 'resolved';
-  createdAt: string;
-  tenantId: string;
-  description: string;
+  customerId: string;
+  groupKey: string;
   riskScore: number;
-  affectedSystems: string[];
-  detectionMethod: string;
-  recommendedAction: string;
-  source: string;
-  category: string;
-  // Enhanced details
-  user: UserInfo;
-  machine: MachineInfo;
-  timeline: TimelineEvent[];
-  actionsTaken: ActionTaken[];
-  relatedActivities: RelatedActivity[];
-  iocIndicators: string[];
-  mitreAttackTechnique: string;
+  alertCount: number;
+  alertTypes: string[];
+  status: 'OPEN' | 'RESOLVED';
+  ticketId: string;
+  created: string;
+  updated?: string | null;
+  ticket?: Record<string, unknown> | null;
+  alert?: Record<string, unknown> | null;
 }
 
-const TENANTS: Tenant[] = [
-  { id: '1', name: '4Refuel', domain: 'https://www.4refuel.com', created: '2025-11-18', enableDeliveryEmail: true },
-  { id: '2', name: 'Heliene', domain: 'https://heliene.com', created: '2025-05-08', enableDeliveryEmail: true },
-  { id: '3', name: 'NONIN Medical Inc', domain: 'https://www.nonin.com/', created: '2025-11-18', enableDeliveryEmail: true },
-  { id: '4', name: 'Quisitive Sandbox', domain: 'https://www.quisitive.com', created: '2025-11-19', enableDeliveryEmail: true },
-];
+interface AlertGroupsResponse {
+  items: AlertGroup[];
+  total: number;
+  start: number;
+  end: number;
+}
 
-// Mock alerts for demonstration with full details
-const MOCK_ALERTS: MockAlert[] = [
-  { 
-    id: 'a1', 
-    title: 'Suspicious Login Attempt', 
-    severity: 'high', 
-    status: 'open', 
-    createdAt: new Date(Date.now() - 2*60*60*1000).toISOString(), 
-    tenantId: '1', 
-    description: 'Multiple failed login attempts from unusual IP address detected on domain controller',
-    riskScore: 82,
-    affectedSystems: ['DC-01', 'DC-02', 'FileServer-03'],
-    detectionMethod: 'Behavioral Analysis + SIEM',
-    recommendedAction: 'Enable MFA on flagged accounts, review login logs, consider blocking source IP',
-    source: 'Active Directory Logs',
-    category: 'Access Control',
-    user: {
-      username: 'jsmith',
-      displayName: 'John Smith',
-      email: 'jsmith@4refuel.com',
-      department: 'Operations',
-      role: 'Fleet Manager',
-      lastLogin: new Date(Date.now() - 3*60*60*1000).toISOString()
-    },
-    machine: {
-      hostname: 'DC-01',
-      ipAddress: '192.168.1.10',
-      macAddress: '00:1A:2B:3C:4D:5E',
-      os: 'Windows Server',
-      osVersion: '2022 Datacenter',
-      lastSeen: new Date(Date.now() - 5*60*1000).toISOString(),
-      location: 'Toronto Data Center - Rack 12',
-      assetTag: 'SVR-2024-0142'
-    },
-    timeline: [
-      { timestamp: new Date(Date.now() - 2*60*60*1000 - 15*60*1000).toISOString(), event: 'First failed login attempt', actor: 'jsmith', details: 'Failed password from IP 185.220.101.45' },
-      { timestamp: new Date(Date.now() - 2*60*60*1000 - 10*60*1000).toISOString(), event: '5 consecutive failed attempts', actor: 'jsmith', details: 'Account lockout threshold approaching' },
-      { timestamp: new Date(Date.now() - 2*60*60*1000 - 5*60*1000).toISOString(), event: 'GeoIP anomaly detected', actor: 'System', details: 'Login attempt from Russia (unusual location)' },
-      { timestamp: new Date(Date.now() - 2*60*60*1000).toISOString(), event: 'Alert generated', actor: 'SIEM', details: 'High severity alert created' }
-    ],
-    actionsTaken: [
-      { timestamp: new Date(Date.now() - 1*60*60*1000).toISOString(), action: 'Account temporarily locked', performedBy: 'Automated Response', result: 'Success', notes: 'Preventive lockout for 30 minutes' },
-      { timestamp: new Date(Date.now() - 45*60*1000).toISOString(), action: 'IP added to watchlist', performedBy: 'SOC Analyst - M. Chen', result: 'Success', notes: 'IP 185.220.101.45 flagged for monitoring' }
-    ],
-    relatedActivities: [
-      { timestamp: new Date(Date.now() - 2*60*60*1000 - 30*60*1000).toISOString(), type: 'Port Scan', description: 'Port scan detected from same source IP', correlation: 'Same source IP' },
-      { timestamp: new Date(Date.now() - 1*24*60*60*1000).toISOString(), type: 'Phishing Email', description: 'User received phishing email yesterday', correlation: 'Same target user' }
-    ],
-    iocIndicators: ['IP: 185.220.101.45', 'User-Agent: Mozilla/5.0 (compatible; MSIE 10.0)', 'GeoLocation: Moscow, RU'],
-    mitreAttackTechnique: 'T1110 - Brute Force'
-  },
-  { 
-    id: 'a2', 
-    title: 'Data Exfiltration Risk', 
-    severity: 'critical', 
-    status: 'investigating', 
-    createdAt: new Date(Date.now() - 4*60*60*1000).toISOString(), 
-    tenantId: '2', 
-    description: 'Large data transfer detected to external network (2.3GB in 15 minutes). Unusual for this user profile.',
-    riskScore: 95,
-    affectedSystems: ['WORKSTATION-12', 'FILE-SHARE-02'],
-    detectionMethod: 'DLP + Network Analytics',
-    recommendedAction: 'Immediately isolate affected system, conduct forensic analysis, review user permissions',
-    source: 'Data Loss Prevention System',
-    category: 'Data Exfiltration',
-    user: {
-      username: 'agarcia',
-      displayName: 'Ana Garcia',
-      email: 'agarcia@heliene.com',
-      department: 'Engineering',
-      role: 'Senior Engineer',
-      lastLogin: new Date(Date.now() - 4*60*60*1000 - 30*60*1000).toISOString()
-    },
-    machine: {
-      hostname: 'WORKSTATION-12',
-      ipAddress: '10.20.30.112',
-      macAddress: '00:1B:44:11:3A:B7',
-      os: 'Windows',
-      osVersion: '11 Enterprise 23H2',
-      lastSeen: new Date(Date.now() - 10*60*1000).toISOString(),
-      location: 'Heliene HQ - Floor 3, Desk 42',
-      assetTag: 'WKS-2023-0847'
-    },
-    timeline: [
-      { timestamp: new Date(Date.now() - 4*60*60*1000 - 20*60*1000).toISOString(), event: 'User logged in', actor: 'agarcia', details: 'Normal login from office location' },
-      { timestamp: new Date(Date.now() - 4*60*60*1000 - 15*60*1000).toISOString(), event: 'File share access', actor: 'agarcia', details: 'Accessed \\\\FILE-SHARE-02\\Engineering\\Confidential' },
-      { timestamp: new Date(Date.now() - 4*60*60*1000 - 10*60*1000).toISOString(), event: 'Large file copy initiated', actor: 'agarcia', details: '847 files selected (2.3GB total)' },
-      { timestamp: new Date(Date.now() - 4*60*60*1000).toISOString(), event: 'External transfer detected', actor: 'DLP System', details: 'Data sent to cloud storage (Dropbox)' },
-      { timestamp: new Date(Date.now() - 4*60*60*1000 + 5*60*1000).toISOString(), event: 'Alert generated', actor: 'DLP', details: 'Critical severity - potential data breach' }
-    ],
-    actionsTaken: [
-      { timestamp: new Date(Date.now() - 3*60*60*1000).toISOString(), action: 'Network traffic captured', performedBy: 'SOC Analyst - R. Patel', result: 'Success', notes: 'PCAP saved for forensic analysis' },
-      { timestamp: new Date(Date.now() - 2*60*60*1000 - 30*60*1000).toISOString(), action: 'User contacted', performedBy: 'SOC Lead - T. Williams', result: 'Pending', notes: 'User claims legitimate work transfer - verifying' },
-      { timestamp: new Date(Date.now() - 2*60*60*1000).toISOString(), action: 'Manager notified', performedBy: 'SOC Lead - T. Williams', result: 'Success', notes: 'Engineering Director informed of incident' }
-    ],
-    relatedActivities: [
-      { timestamp: new Date(Date.now() - 5*60*60*1000).toISOString(), type: 'USB Device', description: 'USB drive connected earlier today', correlation: 'Same user/machine' },
-      { timestamp: new Date(Date.now() - 2*24*60*60*1000).toISOString(), type: 'VPN Access', description: 'User accessed VPN from home network', correlation: 'Same user' }
-    ],
-    iocIndicators: ['Destination: dropbox.com', 'File Types: .dwg, .pdf, .xlsx', 'Transfer Size: 2.3GB', 'Transfer Duration: 15 min'],
-    mitreAttackTechnique: 'T1567 - Exfiltration Over Web Service'
-  },
-  { 
-    id: 'a3', 
-    title: 'Malware Detected', 
-    severity: 'critical', 
-    status: 'open', 
-    createdAt: new Date(Date.now() - 1*60*60*1000).toISOString(), 
-    tenantId: '3', 
-    description: 'Potential malware signature identified on endpoint. File: Win32.Trojan.Gen detected in temp folder.',
-    riskScore: 98,
-    affectedSystems: ['ENDPOINT-45', 'ENDPOINT-46'],
-    detectionMethod: 'Antivirus Signature + Heuristic Detection',
-    recommendedAction: 'Immediately quarantine affected systems, run full system scan, backup critical data',
-    source: 'Endpoint Protection',
-    category: 'Malware',
-    user: {
-      username: 'mwilson',
-      displayName: 'Michael Wilson',
-      email: 'mwilson@nonin.com',
-      department: 'Sales',
-      role: 'Regional Sales Manager',
-      lastLogin: new Date(Date.now() - 1*60*60*1000 - 45*60*1000).toISOString()
-    },
-    machine: {
-      hostname: 'ENDPOINT-45',
-      ipAddress: '172.16.50.45',
-      macAddress: '00:25:64:8B:2C:91',
-      os: 'Windows',
-      osVersion: '10 Enterprise 22H2',
-      lastSeen: new Date(Date.now() - 2*60*1000).toISOString(),
-      location: 'NONIN Plymouth Office - Sales Floor',
-      assetTag: 'LPT-2024-0312'
-    },
-    timeline: [
-      { timestamp: new Date(Date.now() - 1*60*60*1000 - 30*60*1000).toISOString(), event: 'Email received', actor: 'mwilson', details: 'Email with attachment from unknown sender' },
-      { timestamp: new Date(Date.now() - 1*60*60*1000 - 25*60*1000).toISOString(), event: 'Attachment opened', actor: 'mwilson', details: 'User opened Invoice_Q1_2026.pdf.exe' },
-      { timestamp: new Date(Date.now() - 1*60*60*1000 - 24*60*1000).toISOString(), event: 'Process spawned', actor: 'System', details: 'Suspicious child process from PDF reader' },
-      { timestamp: new Date(Date.now() - 1*60*60*1000 - 20*60*1000).toISOString(), event: 'File written to temp', actor: 'Malware', details: 'C:\\Users\\mwilson\\AppData\\Local\\Temp\\svchost32.exe' },
-      { timestamp: new Date(Date.now() - 1*60*60*1000).toISOString(), event: 'Malware detected', actor: 'Endpoint Protection', details: 'Win32.Trojan.Gen signature match' }
-    ],
-    actionsTaken: [
-      { timestamp: new Date(Date.now() - 55*60*1000).toISOString(), action: 'File quarantined', performedBy: 'Automated Response', result: 'Success', notes: 'Malicious file moved to quarantine vault' },
-      { timestamp: new Date(Date.now() - 50*60*1000).toISOString(), action: 'Network isolated', performedBy: 'Automated Response', result: 'Success', notes: 'Endpoint removed from network via NAC' },
-      { timestamp: new Date(Date.now() - 40*60*1000).toISOString(), action: 'Full scan initiated', performedBy: 'SOC Analyst - K. Johnson', result: 'In Progress', notes: 'Deep scan running - 45% complete' }
-    ],
-    relatedActivities: [
-      { timestamp: new Date(Date.now() - 1*60*60*1000 - 30*60*1000).toISOString(), type: 'Phishing Email', description: 'Same email sent to 5 other users', correlation: 'Same email campaign' },
-      { timestamp: new Date(Date.now() - 1*60*60*1000 - 15*60*1000).toISOString(), type: 'C2 Callback', description: 'Attempted connection to known C2 server', correlation: 'Same malware family' }
-    ],
-    iocIndicators: ['File Hash: 5d41402abc4b2a76b9719d911017c592', 'C2 Server: 45.33.32.156:443', 'Registry Key: HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\svchost32', 'Email Sender: invoice@acme-billing.com'],
-    mitreAttackTechnique: 'T1566.001 - Phishing: Spearphishing Attachment'
-  },
-  { 
-    id: 'a4', 
-    title: 'Policy Violation', 
-    severity: 'medium', 
-    status: 'resolved', 
-    createdAt: new Date(Date.now() - 24*60*60*1000).toISOString(), 
-    tenantId: '4', 
-    description: 'Unauthorized application installation detected (PuTTY SSH Client). Violates endpoint hardening policy.',
-    riskScore: 65,
-    affectedSystems: ['WORKSTATION-78'],
-    detectionMethod: 'Software Inventory Management',
-    recommendedAction: 'Remove unauthorized application, enforce application whitelist policy',
-    source: 'Application Control',
-    category: 'Policy Violation',
-    user: {
-      username: 'dlee',
-      displayName: 'David Lee',
-      email: 'dlee@quisitive.com',
-      department: 'IT',
-      role: 'Junior Developer',
-      lastLogin: new Date(Date.now() - 24*60*60*1000 - 2*60*60*1000).toISOString()
-    },
-    machine: {
-      hostname: 'WORKSTATION-78',
-      ipAddress: '10.100.20.78',
-      macAddress: '00:1C:42:9F:DD:E3',
-      os: 'Windows',
-      osVersion: '11 Enterprise 23H2',
-      lastSeen: new Date(Date.now() - 15*60*1000).toISOString(),
-      location: 'Quisitive Toronto - Dev Floor 2',
-      assetTag: 'DEV-2024-0078'
-    },
-    timeline: [
-      { timestamp: new Date(Date.now() - 24*60*60*1000 - 15*60*1000).toISOString(), event: 'Download initiated', actor: 'dlee', details: 'Downloaded putty-64bit-0.80-installer.msi from putty.org' },
-      { timestamp: new Date(Date.now() - 24*60*60*1000 - 10*60*1000).toISOString(), event: 'Installation attempted', actor: 'dlee', details: 'MSI installer execution detected' },
-      { timestamp: new Date(Date.now() - 24*60*60*1000).toISOString(), event: 'Policy violation detected', actor: 'Application Control', details: 'Unauthorized software installation blocked' }
-    ],
-    actionsTaken: [
-      { timestamp: new Date(Date.now() - 23*60*60*1000).toISOString(), action: 'Installation blocked', performedBy: 'Automated Response', result: 'Success', notes: 'AppLocker prevented installation' },
-      { timestamp: new Date(Date.now() - 22*60*60*1000).toISOString(), action: 'User notified', performedBy: 'IT Service Desk', result: 'Success', notes: 'Email sent explaining policy' },
-      { timestamp: new Date(Date.now() - 20*60*60*1000).toISOString(), action: 'Exception request submitted', performedBy: 'dlee', result: 'Approved', notes: 'Manager approved SSH client for dev work' },
-      { timestamp: new Date(Date.now() - 18*60*60*1000).toISOString(), action: 'Alert closed', performedBy: 'IT Manager - S. Brown', result: 'Success', notes: 'Legitimate business need confirmed' }
-    ],
-    relatedActivities: [
-      { timestamp: new Date(Date.now() - 25*60*60*1000).toISOString(), type: 'Help Desk Ticket', description: 'User requested SSH access earlier', correlation: 'Same user' }
-    ],
-    iocIndicators: ['Software: PuTTY 0.80', 'Download Source: putty.org', 'Installer Hash: a1b2c3d4e5f6...'],
-    mitreAttackTechnique: 'N/A - Policy Violation (Not Attack)'
-  },
-  { 
-    id: 'a5', 
-    title: 'Privilege Escalation', 
-    severity: 'high', 
-    status: 'investigating', 
-    createdAt: new Date(Date.now() - 30*60*1000).toISOString(), 
-    tenantId: '1', 
-    description: 'Unusual privilege elevation activity detected. Non-admin user executed privileged command.',
-    riskScore: 88,
-    affectedSystems: ['SERVER-21'],
-    detectionMethod: 'Process Monitoring + Privilege Auditing',
-    recommendedAction: 'Review User Access Control Policy, verify legitimacy, audit command execution',
-    source: 'Process Auditing',
-    category: 'Privilege Management',
-    user: {
-      username: 'rbrown',
-      displayName: 'Rachel Brown',
-      email: 'rbrown@4refuel.com',
-      department: 'Finance',
-      role: 'Accounts Payable Specialist',
-      lastLogin: new Date(Date.now() - 45*60*1000).toISOString()
-    },
-    machine: {
-      hostname: 'SERVER-21',
-      ipAddress: '192.168.5.21',
-      macAddress: '00:50:56:AB:CD:21',
-      os: 'Windows Server',
-      osVersion: '2019 Standard',
-      lastSeen: new Date(Date.now() - 1*60*1000).toISOString(),
-      location: 'Toronto Data Center - Rack 8',
-      assetTag: 'SVR-2021-0089'
-    },
-    timeline: [
-      { timestamp: new Date(Date.now() - 35*60*1000).toISOString(), event: 'RDP connection', actor: 'rbrown', details: 'Connected to SERVER-21 via RDP' },
-      { timestamp: new Date(Date.now() - 32*60*1000).toISOString(), event: 'PowerShell launched', actor: 'rbrown', details: 'PowerShell.exe started with -ExecutionPolicy Bypass' },
-      { timestamp: new Date(Date.now() - 30*60*1000).toISOString(), event: 'Privilege escalation', actor: 'rbrown', details: 'net localgroup administrators rbrown /add executed' },
-      { timestamp: new Date(Date.now() - 30*60*1000).toISOString(), event: 'Alert generated', actor: 'Process Auditing', details: 'Unauthorized privilege elevation detected' }
-    ],
-    actionsTaken: [
-      { timestamp: new Date(Date.now() - 25*60*1000).toISOString(), action: 'Session monitored', performedBy: 'SOC Analyst - J. Martinez', result: 'In Progress', notes: 'Live session monitoring initiated' },
-      { timestamp: new Date(Date.now() - 20*60*1000).toISOString(), action: 'User contacted', performedBy: 'SOC Analyst - J. Martinez', result: 'Pending', notes: 'Phone call attempted - voicemail left' },
-      { timestamp: new Date(Date.now() - 15*60*1000).toISOString(), action: 'Manager escalation', performedBy: 'SOC Lead', result: 'Success', notes: 'Finance Director notified' }
-    ],
-    relatedActivities: [
-      { timestamp: new Date(Date.now() - 40*60*1000).toISOString(), type: 'Failed Login', description: 'Failed admin login attempts on same server', correlation: 'Same target server' },
-      { timestamp: new Date(Date.now() - 35*60*1000).toISOString(), type: 'Credential Access', description: 'Mimikatz-like behavior detected', correlation: 'Same user session' }
-    ],
-    iocIndicators: ['Command: net localgroup administrators rbrown /add', 'PowerShell Flags: -ExecutionPolicy Bypass', 'Session ID: 0x3E7', 'Parent Process: explorer.exe'],
-    mitreAttackTechnique: 'T1078.003 - Valid Accounts: Local Accounts'
-  },
-  { 
-    id: 'a6', 
-    title: 'SSL Certificate Warning', 
-    severity: 'low', 
-    status: 'resolved', 
-    createdAt: new Date(Date.now() - 72*60*60*1000).toISOString(), 
-    tenantId: '2', 
-    description: 'Certificate expiration warning. Current certificate will expire in 30 days.',
-    riskScore: 35,
-    affectedSystems: ['API-SERVER-01', 'WEB-SERVER-02'],
-    detectionMethod: 'Certificate Monitoring',
-    recommendedAction: 'Renew SSL certificate before expiration date to prevent service disruption',
-    source: 'Certificate Management',
-    category: 'Infrastructure',
-    user: {
-      username: 'system',
-      displayName: 'System Monitor',
-      email: 'alerts@heliene.com',
-      department: 'IT Infrastructure',
-      role: 'Automated Monitoring',
-      lastLogin: new Date(Date.now() - 72*60*60*1000).toISOString()
-    },
-    machine: {
-      hostname: 'API-SERVER-01',
-      ipAddress: '10.50.100.15',
-      macAddress: '00:0C:29:5A:3B:2D',
-      os: 'Ubuntu Server',
-      osVersion: '22.04 LTS',
-      lastSeen: new Date(Date.now() - 30*60*1000).toISOString(),
-      location: 'Heliene Cloud - AWS us-east-1',
-      assetTag: 'AWS-2023-0015'
-    },
-    timeline: [
-      { timestamp: new Date(Date.now() - 72*60*60*1000).toISOString(), event: 'Certificate check', actor: 'Certificate Monitor', details: 'Routine daily certificate expiration scan' },
-      { timestamp: new Date(Date.now() - 72*60*60*1000).toISOString(), event: 'Warning generated', actor: 'System', details: 'Certificate expires April 1, 2026 (30 days)' }
-    ],
-    actionsTaken: [
-      { timestamp: new Date(Date.now() - 70*60*60*1000).toISOString(), action: 'Ticket created', performedBy: 'Automated Response', result: 'Success', notes: 'JIRA ticket INFRA-2847 created' },
-      { timestamp: new Date(Date.now() - 68*60*60*1000).toISOString(), action: 'Certificate ordered', performedBy: 'IT Admin - L. Park', result: 'Success', notes: 'New wildcard cert ordered from DigiCert' },
-      { timestamp: new Date(Date.now() - 48*60*60*1000).toISOString(), action: 'Certificate installed', performedBy: 'IT Admin - L. Park', result: 'Success', notes: 'New cert deployed to all servers' },
-      { timestamp: new Date(Date.now() - 48*60*60*1000).toISOString(), action: 'Alert resolved', performedBy: 'IT Admin - L. Park', result: 'Success', notes: 'Verified new cert valid until 2027' }
-    ],
-    relatedActivities: [],
-    iocIndicators: ['Certificate CN: *.heliene.com', 'Issuer: DigiCert', 'Expiry: April 1, 2026', 'Key Size: 2048-bit RSA'],
-    mitreAttackTechnique: 'N/A - Infrastructure Maintenance'
-  },
-];
+// ---------------------------------------------------------------------------
+// API helpers  (proxy in src/setupProxy.js routes /v1/* → blackpointcyber.com)
+// ---------------------------------------------------------------------------
 
-const TenantDetailPage: React.FC<{ tenantId: string; onBack: () => void }> = ({ tenantId, onBack }) => {
-  const tenant = TENANTS.find(t => t.id === tenantId);
-  const alerts = MOCK_ALERTS.filter(a => a.tenantId === tenantId);
-  const criticalAlerts = alerts.filter(a => a.severity === 'critical');
-  const highAlerts = alerts.filter(a => a.severity === 'high');
-  const [expandedAlert, setExpandedAlert] = useState<string | null>(null);
+const API_KEY = process.env.REACT_APP_BLACKPOINT_API_KEY || '';
 
-  if (!tenant) return <div className="error-message">Tenant not found</div>;
+function apiHeaders(tenantId?: string): HeadersInit {
+  const h: Record<string, string> = { Authorization: `Bearer ${API_KEY}` };
+  if (tenantId) h['x-tenant-id'] = tenantId;
+  return h;
+}
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'critical': return '#dc2626';
-      case 'high': return '#f97316';
-      case 'medium': return '#eab308';
-      case 'low': return '#3b82f6';
-      default: return '#64748b';
-    }
-  };
+async function apiFetch<T>(path: string, tenantId?: string): Promise<T> {
+  const res = await fetch(path, { headers: apiHeaders(tenantId) });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText} — ${path}`);
+  return res.json() as Promise<T>;
+}
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'open': return '#ef4444';
-      case 'investigating': return '#f59e0b';
-      case 'resolved': return '#22c55e';
-      default: return '#64748b';
-    }
-  };
+async function loadTenants(): Promise<Tenant[]> {
+  const data = await apiFetch<{ data: Tenant[]; meta: unknown }>('/v1/tenants?pageSize=50');
+  return data.data;
+}
+
+async function loadAlertGroupPreview(tenantId: string): Promise<AlertGroupsResponse> {
+  const qs = new URLSearchParams({
+    take: '10',
+    sortByColumn: 'created',
+    sortDirection: 'DESC',
+  });
+  // Send OPEN status twice — repeated query param for array
+  return apiFetch<AlertGroupsResponse>(`/v1/alert-groups?${qs}&status=OPEN`, tenantId);
+}
+
+async function loadAllAlertGroups(tenantId: string): Promise<AlertGroup[]> {
+  const all: AlertGroup[] = [];
+  let skip = 0;
+  const take = 100;
+  while (true) {
+    const qs = new URLSearchParams({ take: String(take), skip: String(skip), sortByColumn: 'created', sortDirection: 'DESC' });
+    const data = await apiFetch<AlertGroupsResponse>(`/v1/alert-groups?${qs}`, tenantId);
+    all.push(...data.items);
+    if (all.length >= data.total || data.items.length < take) break;
+    skip += take;
+  }
+  return all;
+}
+
+// ---------------------------------------------------------------------------
+// Utility helpers
+// ---------------------------------------------------------------------------
+
+function riskToSeverity(score: number): 'critical' | 'high' | 'medium' | 'low' {
+  if (score >= 80) return 'critical';
+  if (score >= 60) return 'high';
+  if (score >= 40) return 'medium';
+  return 'low';
+}
+
+function getAlertAge(iso: string): { hours: number; text: string; ageCategory: string } {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  const hours = Math.floor(mins / 60);
+  const days = Math.floor(hours / 24);
+  const text = days > 0 ? `${days}d ${hours % 24}h` : hours > 0 ? `${hours}h` : `${mins}m`;
+  const ageCategory = hours >= 72 ? 'overdue' : hours >= 24 ? 'delayed' : hours >= 4 ? 'warning' : 'good';
+  return { hours, text, ageCategory };
+}
+
+function priorityScore(openGroups: AlertGroup[]): number {
+  return openGroups.reduce((sum, ag) => {
+    const { hours } = getAlertAge(ag.created);
+    const sev = riskToSeverity(ag.riskScore);
+    const m = sev === 'critical' ? 4 : sev === 'high' ? 3 : sev === 'medium' ? 2 : 1;
+    return sum + (hours + 1) * m;
+  }, 0);
+}
+
+function fmt(iso?: string | null): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString();
+}
+
+function fmtDate(iso?: string | null): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString();
+}
+
+// ---------------------------------------------------------------------------
+// Tenant Detail Page
+// ---------------------------------------------------------------------------
+
+interface TenantDetailProps {
+  tenant: Tenant;
+  onBack: () => void;
+}
+
+const TenantDetailPage: React.FC<TenantDetailProps> = ({ tenant, onBack }) => {
+  const [groups, setGroups] = useState<AlertGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    loadAllAlertGroups(tenant.id)
+      .then(setGroups)
+      .catch((e: Error) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [tenant.id]);
+
+  const openGroups = groups.filter(g => g.status === 'OPEN');
+  const resolvedGroups = groups.filter(g => g.status === 'RESOLVED');
+  const criticalGroups = groups.filter(g => riskToSeverity(g.riskScore) === 'critical');
 
   return (
     <div className="detail-container">
@@ -421,20 +166,22 @@ const TenantDetailPage: React.FC<{ tenantId: string; onBack: () => void }> = ({ 
         {/* Tenant Header */}
         <div className="detail-header-card">
           <div className="card-header">
-            <div className="tenant-avatar large">
-              {tenant.name.substring(0, 2)}
-            </div>
+            <div className="tenant-avatar large">{tenant.name.substring(0, 2)}</div>
             <div>
               <h1 className="detail-title">{tenant.name}</h1>
-              <p className="detail-subtitle">{tenant.domain}</p>
+              {tenant.domain && <p className="detail-subtitle">{tenant.domain}</p>}
               <div className="meta-grid">
                 <div className="meta-item">
                   <span className="meta-label">Tenant ID</span>
                   <div className="meta-value mono">{tenant.id}</div>
                 </div>
                 <div className="meta-item">
+                  <span className="meta-label">Status</span>
+                  <div className="meta-value green">{tenant.status}</div>
+                </div>
+                <div className="meta-item">
                   <span className="meta-label">Created</span>
-                  <div className="meta-value">{new Date(tenant.created).toLocaleDateString()}</div>
+                  <div className="meta-value">{fmtDate(tenant.created)}</div>
                 </div>
                 <div className="meta-item">
                   <span className="meta-label">Email Delivery</span>
@@ -442,309 +189,288 @@ const TenantDetailPage: React.FC<{ tenantId: string; onBack: () => void }> = ({ 
                     {tenant.enableDeliveryEmail ? '✓ Enabled' : '✗ Disabled'}
                   </div>
                 </div>
+                {tenant.industryType && (
+                  <div className="meta-item">
+                    <span className="meta-label">Industry</span>
+                    <div className="meta-value">{tenant.industryType}</div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Metrics */}
           <div className="metrics-grid">
             <div className="metric-item">
-              <div className="metric-value red">{alerts.length}</div>
-              <div className="metric-label">Total Alerts</div>
+              <div className="metric-value blue">{groups.length}</div>
+              <div className="metric-label">Total Groups</div>
             </div>
             <div className="metric-item">
-              <div className="metric-value critical">{criticalAlerts.length}</div>
-              <div className="metric-label">Critical</div>
+              <div className="metric-value red">{openGroups.length}</div>
+              <div className="metric-label">Open</div>
             </div>
             <div className="metric-item">
-              <div className="metric-value orange">{highAlerts.length}</div>
-              <div className="metric-label">High Priority</div>
+              <div className="metric-value critical">{criticalGroups.length}</div>
+              <div className="metric-label">Critical Risk</div>
             </div>
             <div className="metric-item">
-              <div className="metric-value green">{alerts.filter(a => a.status === 'resolved').length}</div>
+              <div className="metric-value green">{resolvedGroups.length}</div>
               <div className="metric-label">Resolved</div>
             </div>
           </div>
         </div>
 
-        {/* Alerts Section */}
-        <div>
-          <h2 className="section-title large">Security Alerts ({alerts.length})</h2>
-          {alerts.length > 0 ? (
-            <div className="alerts-list">
-              {alerts.map(alert => (
-                <div 
-                  key={alert.id}
-                  onClick={() => setExpandedAlert(expandedAlert === alert.id ? null : alert.id)}
-                  className="alert-card"
-                  data-severity={alert.severity}
-                >
-                  <div className="alert-card-header">
-                    <div className="alert-card-content">
-                      <div className="alert-title-row" data-severity={alert.severity} data-status={alert.status}>
-                        <div className="severity-dot"></div>
-                        <span className="alert-title">{alert.title}</span>
-                        <span className="status-badge">
-                          {alert.status.toUpperCase()}
-                        </span>
-                        <span className="risk-badge">
-                          Risk: {alert.riskScore}/100
-                        </span>
-                      </div>
-                      <div className="alert-meta">
-                        {new Date(alert.createdAt).toLocaleString()} • {alert.category} • {alert.source}
-                      </div>
-                      
-                      {expandedAlert === alert.id && (
-                        <div className="alert-expanded" onClick={e => e.stopPropagation()}>
-                          
-                          {/* Description */}
-                          <div className="alert-section">
-                            <div className="alert-section-title">DESCRIPTION</div>
-                            <div className="alert-description">{alert.description}</div>
-                            <div className="alert-detail-row">
-                              <strong>Detection Method:</strong> {alert.detectionMethod}
-                            </div>
-                            <div className="alert-detail-row warning">
-                              <strong>Recommended Action:</strong> {alert.recommendedAction}
-                            </div>
-                            {alert.mitreAttackTechnique !== 'N/A - Policy Violation (Not Attack)' && alert.mitreAttackTechnique !== 'N/A - Infrastructure Maintenance' && (
-                              <div className="mitre-badge">
-                                MITRE ATT&CK: {alert.mitreAttackTechnique}
-                              </div>
-                            )}
+        {/* Alert Groups */}
+        {loading && <div className="loading-state">Loading alert groups…</div>}
+        {error && <div className="error-message">⚠ {error}</div>}
+
+        {!loading && !error && (
+          <div>
+            <h2 className="section-title large">Detection Groups ({groups.length})</h2>
+            {groups.length === 0 ? (
+              <div className="empty-state">No detection groups for this tenant</div>
+            ) : (
+              <div className="alerts-list">
+                {groups.map(group => {
+                  const severity = riskToSeverity(group.riskScore);
+                  const age = getAlertAge(group.created);
+                  const isOpen = group.status === 'OPEN';
+
+                  return (
+                    <div
+                      key={group.id}
+                      onClick={() => setExpanded(expanded === group.id ? null : group.id)}
+                      className="alert-card"
+                      data-severity={severity}
+                    >
+                      <div className="alert-card-header">
+                        <div className="alert-card-content">
+                          <div
+                            className="alert-title-row"
+                            data-severity={severity}
+                            data-status={isOpen ? 'open' : 'resolved'}
+                          >
+                            <div className="severity-dot"></div>
+                            <span className="alert-title">
+                              {group.alertTypes.length > 0
+                                ? group.alertTypes.join(', ')
+                                : group.groupKey}
+                            </span>
+                            <span className="status-badge">{group.status}</span>
+                            <span className="risk-badge">Risk: {group.riskScore}/100</span>
+                          </div>
+                          <div className="alert-meta">
+                            {fmt(group.created)} &bull; {group.alertCount} alert
+                            {group.alertCount !== 1 ? 's' : ''} &bull; Age:{' '}
+                            {age.text}
                           </div>
 
-                          {/* User & Machine Info Grid */}
-                          <div className="detail-grid">
-                            {/* User Details */}
-                            <div className="alert-section">
-                              <div className="alert-section-title">
-                                <span className="section-icon">👤</span> USER DETAILS
-                              </div>
-                              <div className="detail-list">
-                                <div><span className="label">Username:</span> <span className="value-mono blue">{alert.user.username}</span></div>
-                                <div><span className="label">Name:</span> {alert.user.displayName}</div>
-                                <div><span className="label">Email:</span> <span className="value-cyan">{alert.user.email}</span></div>
-                                <div><span className="label">Department:</span> {alert.user.department}</div>
-                                <div><span className="label">Role:</span> {alert.user.role}</div>
-                                <div><span className="label">Last Login:</span> {new Date(alert.user.lastLogin).toLocaleString()}</div>
-                              </div>
-                            </div>
+                          {expanded === group.id && (
+                            <div className="alert-expanded" onClick={e => e.stopPropagation()}>
 
-                            {/* Machine Details */}
-                            <div className="alert-section">
-                              <div className="alert-section-title">
-                                <span className="section-icon">🖥️</span> MACHINE DETAILS
-                              </div>
-                              <div className="detail-list">
-                                <div><span className="label">Hostname:</span> <span className="value-mono orange">{alert.machine.hostname}</span></div>
-                                <div><span className="label">IP Address:</span> <span className="value-mono">{alert.machine.ipAddress}</span></div>
-                                <div><span className="label">MAC:</span> <span className="value-mono small">{alert.machine.macAddress}</span></div>
-                                <div><span className="label">OS:</span> {alert.machine.os} {alert.machine.osVersion}</div>
-                                <div><span className="label">Location:</span> {alert.machine.location}</div>
-                                <div><span className="label">Asset Tag:</span> <span className="value-mono">{alert.machine.assetTag}</span></div>
-                                <div><span className="label">Last Seen:</span> {new Date(alert.machine.lastSeen).toLocaleString()}</div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Timeline */}
-                          <div className="alert-section">
-                            <div className="alert-section-title">
-                              <span className="section-icon">📅</span> EVENT TIMELINE
-                            </div>
-                            <div className="timeline">
-                              {alert.timeline.map((event, idx) => (
-                                <div key={idx} className="timeline-item">
-                                  <div className="timeline-dot"></div>
-                                  <div className="timeline-time">{new Date(event.timestamp).toLocaleString()}</div>
-                                  <div className="timeline-event">{event.event}</div>
-                                  <div className="timeline-details">
-                                    <span className="actor">{event.actor}</span> • {event.details}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Actions Taken */}
-                          <div className="alert-section">
-                            <div className="alert-section-title">
-                              <span className="section-icon">⚡</span> ACTIONS TAKEN ({alert.actionsTaken.length})
-                            </div>
-                            <div className="actions-list">
-                              {alert.actionsTaken.map((action, idx) => (
-                                <div key={idx} className={`action-item ${action.result === 'Success' ? 'success' : action.result === 'In Progress' ? 'progress' : ''}`}>
-                                  <div className="action-header">
-                                    <span className="action-name">{action.action}</span>
-                                    <span className={`result-badge ${action.result === 'Success' ? 'success' : action.result === 'In Progress' ? 'progress' : ''}`}>
-                                      {action.result}
+                              {/* Overview */}
+                              <div className="alert-section">
+                                <div className="alert-section-title">DETECTION DETAILS</div>
+                                <div className="detail-list">
+                                  <div><span className="label">Group ID:</span> <span className="value-mono blue">{group.id}</span></div>
+                                  <div><span className="label">Group Key:</span> <span className="value-mono">{group.groupKey}</span></div>
+                                  <div><span className="label">Ticket ID:</span> <span className="value-mono orange">{group.ticketId || '—'}</span></div>
+                                  <div><span className="label">Alert Count:</span> {group.alertCount}</div>
+                                  <div><span className="label">Risk Score:</span>
+                                    <span style={{ marginLeft: 8 }}>
+                                      <span className={`severity-badge ${severity}`}>{severity.toUpperCase()} ({group.riskScore})</span>
                                     </span>
                                   </div>
-                                  <div className="action-time">{new Date(action.timestamp).toLocaleString()}</div>
-                                  <div className="action-by">
-                                    <strong>By:</strong> {action.performedBy}
-                                  </div>
-                                  <div className="action-notes">{action.notes}</div>
+                                  <div><span className="label">Created:</span> {fmt(group.created)}</div>
+                                  {group.updated && <div><span className="label">Updated:</span> {fmt(group.updated)}</div>}
                                 </div>
-                              ))}
-                            </div>
-                          </div>
 
-                          {/* Related Activities & IOC Indicators Grid */}
-                          <div className="detail-grid">
-                            {/* Related Activities */}
-                            <div className="alert-section">
-                              <div className="alert-section-title">
-                                <span className="section-icon">🔗</span> RELATED ACTIVITIES
-                              </div>
-                              {alert.relatedActivities.length > 0 ? (
-                                <div className="activities-list">
-                                  {alert.relatedActivities.map((activity, idx) => (
-                                    <div key={idx} className="activity-item">
-                                      <div className="activity-header">
-                                        <span className="activity-type">{activity.type}</span>
-                                        <span className="activity-date">{new Date(activity.timestamp).toLocaleDateString()}</span>
-                                      </div>
-                                      <div className="activity-desc">{activity.description}</div>
-                                      <div className="activity-correlation">Correlation: {activity.correlation}</div>
-                                    </div>
-                                  ))}
+                                {/* Risk progress bar */}
+                                <div style={{ marginTop: 12 }}>
+                                  <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>RISK SCORE</div>
+                                  <div className="score-bar" style={{ height: 10 }}>
+                                    <div
+                                      className={`score-fill ${severity}`}
+                                      style={{ width: `${group.riskScore}%` }}
+                                    ></div>
+                                  </div>
                                 </div>
-                              ) : (
-                                <div className="empty-activities">No related activities detected</div>
+                              </div>
+
+                              {/* Alert Types */}
+                              {group.alertTypes.length > 0 && (
+                                <div className="alert-section">
+                                  <div className="alert-section-title">
+                                    <span className="section-icon">🎯</span> ALERT TYPES
+                                  </div>
+                                  <div className="ioc-tags">
+                                    {group.alertTypes.map((t, i) => (
+                                      <span key={i} className="ioc-tag">{t}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Detection alert object (hostname, username, etc.) */}
+                              {group.alert && Object.keys(group.alert).length > 0 && (
+                                <div className="alert-section">
+                                  <div className="alert-section-title">
+                                    <span className="section-icon">🖥️</span> DETECTION DATA
+                                  </div>
+                                  <div className="detail-list">
+                                    {Object.entries(group.alert)
+                                      .filter(([, v]) => v !== null && v !== undefined && v !== '')
+                                      .map(([k, v]) => (
+                                        <div key={k}>
+                                          <span className="label">{k}:</span>{' '}
+                                          <span className="value-mono">
+                                            {typeof v === 'object' ? JSON.stringify(v) : String(v)}
+                                          </span>
+                                        </div>
+                                      ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Ticket info */}
+                              {group.ticket && Object.keys(group.ticket).length > 0 && (
+                                <div className="alert-section">
+                                  <div className="alert-section-title">
+                                    <span className="section-icon">🎫</span> TICKET
+                                  </div>
+                                  <div className="detail-list">
+                                    {Object.entries(group.ticket)
+                                      .filter(([, v]) => v !== null && v !== undefined && v !== '')
+                                      .map(([k, v]) => (
+                                        <div key={k}>
+                                          <span className="label">{k}:</span>{' '}
+                                          <span className="value-mono">
+                                            {typeof v === 'object' ? JSON.stringify(v) : String(v)}
+                                          </span>
+                                        </div>
+                                      ))}
+                                  </div>
+                                </div>
                               )}
                             </div>
-
-                            {/* IOC Indicators */}
-                            <div className="alert-section">
-                              <div className="alert-section-title">
-                                <span className="section-icon">🎯</span> IOC INDICATORS
-                              </div>
-                              <div className="ioc-tags">
-                                {alert.iocIndicators.map((ioc, idx) => (
-                                  <span key={idx} className="ioc-tag">
-                                    {ioc}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Affected Systems */}
-                          <div className="alert-section">
-                            <div className="alert-section-title">AFFECTED SYSTEMS</div>
-                            <div className="systems-list">
-                              {alert.affectedSystems.map((system, idx) => (
-                                <span key={idx} className="system-tag">
-                                  {system}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
+                          )}
                         </div>
-                      )}
+                        <span className="alert-expand-icon">
+                          {expanded === group.id ? '▼' : '▶'}
+                        </span>
+                      </div>
                     </div>
-                    <span className="alert-expand-icon">{expandedAlert === alert.id ? '▼' : '▶'}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="empty-state">
-              No alerts for this tenant
-            </div>
-          )}
-        </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-const Dashboard = () => {
-  const [selectedTenant, setSelectedTenant] = useState<string | null>(null);
+// ---------------------------------------------------------------------------
+// Tenant card data (main view)
+// ---------------------------------------------------------------------------
 
-  // Helper function to calculate age of an alert
-  const getAlertAge = (createdAt: string): { hours: number; text: string; color: string; ageCategory: string } => {
-    const created = new Date(createdAt);
-    const now = new Date();
-    const diffMs = now.getTime() - created.getTime();
-    const hours = Math.floor(diffMs / (1000 * 60 * 60));
-    const days = Math.floor(hours / 24);
-    
-    let text: string;
-    let color: string;
-    let ageCategory: string;
-    
-    if (days > 0) {
-      text = `${days}d ${hours % 24}h`;
-    } else if (hours > 0) {
-      text = `${hours}h`;
-    } else {
-      const minutes = Math.floor(diffMs / (1000 * 60));
-      text = `${minutes}m`;
-    }
-    
-    // Color based on age - older = more urgent
-    if (hours >= 72) {
-      color = '#dc2626'; // Red - critical aging
-      ageCategory = 'overdue';
-    } else if (hours >= 24) {
-      color = '#f97316'; // Orange - needs attention
-      ageCategory = 'delayed';
-    } else if (hours >= 4) {
-      color = '#eab308'; // Yellow - aging
-      ageCategory = 'warning';
-    } else {
-      color = '#22c55e'; // Green - fresh
-      ageCategory = 'good';
-    }
-    
-    return { hours, text, color, ageCategory };
-  };
+interface TenantCardData {
+  tenant: Tenant;
+  openGroups: AlertGroup[];
+  totalOpen: number;
+  loading: boolean;
+  error: string | null;
+}
 
-  // Get oldest unresolved alert for a tenant
-  const getOldestUnresolvedAlert = (tenantId: string): MockAlert | null => {
-    const unresolvedAlerts = MOCK_ALERTS.filter(a => a.tenantId === tenantId && a.status !== 'resolved');
-    if (unresolvedAlerts.length === 0) return null;
-    return unresolvedAlerts.reduce((oldest, current) => 
-      new Date(current.createdAt) < new Date(oldest.createdAt) ? current : oldest
-    );
-  };
+// ---------------------------------------------------------------------------
+// Main Dashboard
+// ---------------------------------------------------------------------------
 
-  // Get priority score (higher = more urgent)
-  const getTenantPriorityScore = (tenantId: string): number => {
-    const unresolvedAlerts = MOCK_ALERTS.filter(a => a.tenantId === tenantId && a.status !== 'resolved');
-    if (unresolvedAlerts.length === 0) return 0;
-    
-    let score = 0;
-    unresolvedAlerts.forEach(alert => {
-      const age = getAlertAge(alert.createdAt);
-      const severityMultiplier = alert.severity === 'critical' ? 4 : alert.severity === 'high' ? 3 : alert.severity === 'medium' ? 2 : 1;
-      score += (age.hours + 1) * severityMultiplier;
-    });
-    return score;
-  };
+const Dashboard: React.FC = () => {
+  const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [tenantData, setTenantData] = useState<Map<string, TenantCardData>>(new Map());
+  const [tenantsLoading, setTenantsLoading] = useState(true);
+  const [tenantsError, setTenantsError] = useState<string | null>(null);
 
-  // Sort tenants by priority (highest first)
-  const sortedTenants = [...TENANTS].sort((a, b) => getTenantPriorityScore(b.id) - getTenantPriorityScore(a.id));
+  const noApiKey = !API_KEY;
+
+  // Load tenants on mount
+  useEffect(() => {
+    if (noApiKey) return;
+    loadTenants()
+      .then(list => {
+        setTenants(list);
+        // Kick off alert group previews for each tenant
+        list.forEach(t => {
+          setTenantData(prev => {
+            const next = new Map(prev);
+            next.set(t.id, { tenant: t, openGroups: [], totalOpen: 0, loading: true, error: null });
+            return next;
+          });
+          loadAlertGroupPreview(t.id)
+            .then(resp => {
+              setTenantData(prev => {
+                const next = new Map(prev);
+                next.set(t.id, {
+                  tenant: t,
+                  openGroups: resp.items,
+                  totalOpen: resp.total,
+                  loading: false,
+                  error: null,
+                });
+                return next;
+              });
+            })
+            .catch((e: Error) => {
+              setTenantData(prev => {
+                const next = new Map(prev);
+                next.set(t.id, { tenant: t, openGroups: [], totalOpen: 0, loading: false, error: e.message });
+                return next;
+              });
+            });
+        });
+      })
+      .catch((e: Error) => setTenantsError(e.message))
+      .finally(() => setTenantsLoading(false));
+  }, [noApiKey]);
 
   if (selectedTenant) {
-    return <TenantDetailPage tenantId={selectedTenant} onBack={() => setSelectedTenant(null)} />;
+    return (
+      <TenantDetailPage
+        tenant={selectedTenant}
+        onBack={() => setSelectedTenant(null)}
+      />
+    );
   }
 
-  const totalAlerts = MOCK_ALERTS.length;
-  const criticalCount = MOCK_ALERTS.filter(a => a.severity === 'critical').length;
-  const openCount = MOCK_ALERTS.filter(a => a.status === 'open').length;
-  
-  // Find oldest unresolved alert across all tenants
-  const oldestUnresolved = MOCK_ALERTS
-    .filter(a => a.status !== 'resolved')
-    .reduce((oldest, current) => 
-      !oldest || new Date(current.createdAt) < new Date(oldest.createdAt) ? current : oldest
-    , null as MockAlert | null);
-  const oldestAge = oldestUnresolved ? getAlertAge(oldestUnresolved.createdAt) : null;
+  // --- KPI calculations ---
+  const totalTenants = tenants.length;
+  const allTenantData = Array.from(tenantData.values());
+  const totalOpen = allTenantData.reduce((s, d) => s + d.totalOpen, 0);
+  const criticalCount = allTenantData.reduce(
+    (s, d) => s + d.openGroups.filter(g => riskToSeverity(g.riskScore) === 'critical').length,
+    0
+  );
+
+  // Oldest open alert across all tenants
+  const allOpenGroups = allTenantData.flatMap(d => d.openGroups);
+  const oldestGroup = allOpenGroups.length
+    ? allOpenGroups.reduce((oldest, g) =>
+        new Date(g.created) < new Date(oldest.created) ? g : oldest
+      )
+    : null;
+  const oldestAge = oldestGroup ? getAlertAge(oldestGroup.created) : null;
+  const oldestTenant = oldestGroup
+    ? tenants.find(t => t.id === oldestGroup.customerId)
+    : null;
+
+  // Sort tenants by priority score (highest first)
+  const sortedTenants = [...tenants].sort((a, b) => {
+    const aData = tenantData.get(a.id);
+    const bData = tenantData.get(b.id);
+    return priorityScore(bData?.openGroups ?? []) - priorityScore(aData?.openGroups ?? []);
+  });
 
   return (
     <div className="dashboard-container">
@@ -752,239 +478,264 @@ const Dashboard = () => {
       <div className="dashboard-header">
         <div className="dashboard-header-content">
           <h1 className="dashboard-title">🛡️ Blackpoint Tenant Monitor</h1>
+
+          {noApiKey && (
+            <div className="error-message" style={{ marginTop: 12 }}>
+              ⚠ No API key found. Add <code>REACT_APP_BLACKPOINT_API_KEY</code> to a{' '}
+              <code>.env</code> file and restart the dev server.
+            </div>
+          )}
+
           <div className="kpi-grid">
             <div className="kpi-card">
-              <div className="kpi-label">Total Alerts</div>
-              <div className="kpi-value blue">{totalAlerts}</div>
+              <div className="kpi-label">Monitored Tenants</div>
+              <div className="kpi-value green">
+                {tenantsLoading ? '…' : totalTenants}
+              </div>
             </div>
             <div className="kpi-card">
-              <div className="kpi-label">Critical</div>
+              <div className="kpi-label">Open Detections</div>
+              <div className="kpi-value orange">{totalOpen}</div>
+            </div>
+            <div className="kpi-card">
+              <div className="kpi-label">Critical Risk</div>
               <div className="kpi-value red">{criticalCount}</div>
             </div>
-            <div className="kpi-card">
-              <div className="kpi-label">Open Issues</div>
-              <div className="kpi-value orange">{openCount}</div>
-            </div>
-            <div className="kpi-card">
-              <div className="kpi-label">Monitored Tenants</div>
-              <div className="kpi-value green">{TENANTS.length}</div>
-            </div>
             <div className={`kpi-card ${oldestAge && oldestAge.hours >= 24 ? 'highlight' : ''}`}>
-              <div className="kpi-label">Oldest Open Alert</div>
+              <div className="kpi-label">Oldest Open (preview)</div>
               <div className="kpi-value" data-age={oldestAge?.ageCategory || 'good'}>
                 {oldestAge ? oldestAge.text : '—'}
               </div>
-              {oldestUnresolved && (
-                <div className="kpi-subtitle">
-                  {TENANTS.find(t => t.id === oldestUnresolved.tenantId)?.name}
-                </div>
+              {oldestTenant && (
+                <div className="kpi-subtitle">{oldestTenant.name}</div>
               )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="dashboard-content">
-        
-        {/* Priority Ranking Table */}
-        <div className="priority-section">
-          <h2 className="section-title">
-            🚨 Remediation Priority Queue
-            <span className="section-subtitle">(sorted by urgency)</span>
-          </h2>
-          <div className="table-container">
-            <table className="priority-table">
-              <thead>
-                <tr className="table-header-row">
-                  <th className="table-header">PRIORITY</th>
-                  <th className="table-header">CLIENT</th>
-                  <th className="table-header">OLDEST TICKET AGE</th>
-                  <th className="table-header">SEVERITY</th>
-                  <th className="table-header">OPEN ALERTS</th>
-                  <th className="table-header">PRIORITY SCORE</th>
-                  <th className="table-header text-right">ACTION</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedTenants.map((tenant, index) => {
-                  const oldestAlert = getOldestUnresolvedAlert(tenant.id);
-                  const unresolvedCount = MOCK_ALERTS.filter(a => a.tenantId === tenant.id && a.status !== 'resolved').length;
-                  const criticalCount = MOCK_ALERTS.filter(a => a.tenantId === tenant.id && a.severity === 'critical' && a.status !== 'resolved').length;
-                  const priorityScore = getTenantPriorityScore(tenant.id);
-                  const age = oldestAlert ? getAlertAge(oldestAlert.createdAt) : null;
-                  
-                  if (unresolvedCount === 0) return null; // Skip tenants with no open alerts
-                  
-                  return (
-                    <tr 
-                      key={tenant.id} 
-                      className={`table-row ${index === 0 ? 'top-priority' : ''}`}
-                      onClick={() => setSelectedTenant(tenant.id)}
-                    >
-                      <td className="table-cell">
-                        <div className={`priority-badge ${index === 0 ? 'first' : index === 1 ? 'second' : 'default'}`}>
-                          {index + 1}
-                        </div>
-                      </td>
-                      <td className="table-cell">
-                        <div className="client-name">{tenant.name}</div>
-                        <div className="client-domain">{tenant.domain}</div>
-                      </td>
-                      <td className="table-cell" data-age={age?.ageCategory}>
-                        {age && (
-                          <div className="age-display">
-                            <span className="age-value">
-                              {age.text}
-                            </span>
-                            {age.hours >= 24 && (
-                              <span className="overdue-badge">OVERDUE</span>
+        {tenantsLoading && <div className="loading-state">Loading tenants…</div>}
+        {tenantsError && <div className="error-message">⚠ {tenantsError}</div>}
+
+        {/* Priority Queue */}
+        {sortedTenants.some(t => (tenantData.get(t.id)?.totalOpen ?? 0) > 0) && (
+          <div className="priority-section">
+            <h2 className="section-title">
+              🚨 Remediation Priority Queue
+              <span className="section-subtitle">(sorted by urgency)</span>
+            </h2>
+            <div className="table-container">
+              <table className="priority-table">
+                <thead>
+                  <tr className="table-header-row">
+                    <th className="table-header">PRIORITY</th>
+                    <th className="table-header">CLIENT</th>
+                    <th className="table-header">OLDEST (PREVIEW)</th>
+                    <th className="table-header">SEVERITY</th>
+                    <th className="table-header">OPEN DETECTIONS</th>
+                    <th className="table-header">PRIORITY SCORE</th>
+                    <th className="table-header text-right">ACTION</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedTenants.map((tenant, index) => {
+                    const data = tenantData.get(tenant.id);
+                    const open = data?.totalOpen ?? 0;
+                    if (open === 0) return null;
+
+                    const openGroups = data?.openGroups ?? [];
+                    const oldest = openGroups.length
+                      ? openGroups.reduce((o, g) =>
+                          new Date(g.created) < new Date(o.created) ? g : o
+                        )
+                      : null;
+                    const age = oldest ? getAlertAge(oldest.created) : null;
+                    const topSeverity = oldest ? riskToSeverity(oldest.riskScore) : 'low';
+                    const score = priorityScore(openGroups);
+                    const criticalCnt = openGroups.filter(g => riskToSeverity(g.riskScore) === 'critical').length;
+
+                    return (
+                      <tr
+                        key={tenant.id}
+                        className={`table-row ${index === 0 ? 'top-priority' : ''}`}
+                        onClick={() => setSelectedTenant(tenant)}
+                      >
+                        <td className="table-cell">
+                          <div className={`priority-badge ${index === 0 ? 'first' : index === 1 ? 'second' : 'default'}`}>
+                            {index + 1}
+                          </div>
+                        </td>
+                        <td className="table-cell">
+                          <div className="client-name">{tenant.name}</div>
+                          {tenant.domain && <div className="client-domain">{tenant.domain}</div>}
+                        </td>
+                        <td className="table-cell" data-age={age?.ageCategory}>
+                          {age ? (
+                            <div className="age-display">
+                              <span className="age-value">{age.text}</span>
+                              {age.hours >= 24 && <span className="overdue-badge">OVERDUE</span>}
+                            </div>
+                          ) : data?.loading ? '…' : '—'}
+                        </td>
+                        <td className="table-cell">
+                          {oldest && (
+                            <span className={`severity-badge ${topSeverity}`}>{topSeverity}</span>
+                          )}
+                        </td>
+                        <td className="table-cell">
+                          <div className="alerts-count">
+                            <span className="count-value">{open}</span>
+                            {criticalCnt > 0 && (
+                              <span className="critical-note">({criticalCnt} critical)</span>
                             )}
                           </div>
-                        )}
-                      </td>
-                      <td className="table-cell">
-                        {oldestAlert && (
-                          <span className={`severity-badge ${oldestAlert.severity}`}>
-                            {oldestAlert.severity}
-                          </span>
-                        )}
-                      </td>
-                      <td className="table-cell">
-                        <div className="alerts-count">
-                          <span className="count-value">{unresolvedCount}</span>
-                          {criticalCount > 0 && (
-                            <span className="critical-note">({criticalCount} critical)</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="table-cell">
-                        <div className="score-display">
-                          <div className="score-bar">
-                            <div 
-                              className={`score-fill ${priorityScore > 300 ? 'critical' : priorityScore > 150 ? 'high' : 'medium'} w-${Math.round(Math.min(100, priorityScore / 5) / 10) * 10}`}
-                            ></div>
+                        </td>
+                        <td className="table-cell">
+                          <div className="score-display">
+                            <div className="score-bar">
+                              <div
+                                className={`score-fill ${score > 300 ? 'critical' : score > 150 ? 'high' : 'medium'}`}
+                                style={{ width: `${Math.min(100, score / 5)}%` }}
+                              ></div>
+                            </div>
+                            <span className="score-value">{score}</span>
                           </div>
-                          <span className="score-value">{priorityScore}</span>
-                        </div>
-                      </td>
-                      <td className="table-cell text-right">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedTenant(tenant.id);
-                          }}
-                          className="btn-primary"
-                        >
-                          Investigate →
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                        <td className="table-cell text-right">
+                          <button
+                            onClick={e => { e.stopPropagation(); setSelectedTenant(tenant); }}
+                            className="btn-primary"
+                          >
+                            Investigate →
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
 
-        <h2 className="section-title large">Monitored Tenants</h2>
-        <div className="tenant-grid">
-          {TENANTS.map(tenant => {
-            const tenantAlerts = MOCK_ALERTS.filter(a => a.tenantId === tenant.id);
-            const criticalAlerts = tenantAlerts.filter(a => a.severity === 'critical');
-            const hasAlerts = tenantAlerts.length > 0;
-            const oldestAlert = getOldestUnresolvedAlert(tenant.id);
-            const oldestAlertAge = oldestAlert ? getAlertAge(oldestAlert.createdAt) : null;
-            const unresolvedCount = MOCK_ALERTS.filter(a => a.tenantId === tenant.id && a.status !== 'resolved').length;
+        {/* Tenant Grid */}
+        {!tenantsLoading && tenants.length > 0 && (
+          <>
+            <h2 className="section-title large">Monitored Tenants</h2>
+            <div className="tenant-grid">
+              {tenants.map(tenant => {
+                const data = tenantData.get(tenant.id);
+                const openGroups = data?.openGroups ?? [];
+                const totalOpen = data?.totalOpen ?? 0;
+                const criticalGroups = openGroups.filter(g => riskToSeverity(g.riskScore) === 'critical');
+                const oldest = openGroups.length
+                  ? openGroups.reduce((o, g) =>
+                      new Date(g.created) < new Date(o.created) ? g : o
+                    )
+                  : null;
+                const oldestAge = oldest ? getAlertAge(oldest.created) : null;
 
-            return (
-              <div
-                key={tenant.id}
-                onClick={() => setSelectedTenant(tenant.id)}
-                className={`tenant-card ${criticalAlerts.length > 0 ? 'critical' : hasAlerts ? 'warning' : ''}`}
-              >
-                {/* Alert Badge */}
-                {hasAlerts && (
-                  <div className={`card-alert-badge ${criticalAlerts.length > 0 ? 'critical' : 'warning'}`}>
-                    {tenantAlerts.length}
-                  </div>
-                )}
-
-                <div className="card-header">
-                  <div className="tenant-avatar">
-                    {tenant.name.substring(0, 2)}
-                  </div>
-                  <div className="tenant-info">
-                    <h3 className="tenant-name">{tenant.name}</h3>
-                    <p className="tenant-domain">{tenant.domain}</p>
-                  </div>
-                </div>
-
-                {/* Stats Grid */}
-                <div className="card-stats-grid">
-                  <div className="stat-item">
-                    <div className="stat-label">Status</div>
-                    <div className="stat-value green">● Active</div>
-                  </div>
-                  <div className="stat-item">
-                    <div className="stat-label">Open</div>
-                    <div className={`stat-value bold ${unresolvedCount > 0 ? 'orange' : 'green'}`}>{unresolvedCount}</div>
-                  </div>
-                  <div className="stat-item">
-                    <div className="stat-label">Total</div>
-                    <div className="stat-value bold blue">{tenantAlerts.length}</div>
-                  </div>
-                </div>
-
-                {/* Oldest Ticket Age */}
-                {oldestAlertAge && (
-                  <div className={`oldest-ticket-box ${oldestAlertAge.hours >= 24 ? 'overdue' : ''}`} data-age={oldestAlertAge.ageCategory}>
-                    <div className="oldest-ticket-label">OLDEST OPEN TICKET</div>
-                    <div className="oldest-ticket-content">
-                      <div>
-                        <span className="oldest-ticket-age">
-                          {oldestAlertAge.text}
-                        </span>
-                        {oldestAlertAge.hours >= 24 && (
-                          <span className="overdue-badge small">OVERDUE</span>
-                        )}
+                return (
+                  <div
+                    key={tenant.id}
+                    onClick={() => setSelectedTenant(tenant)}
+                    className={`tenant-card ${criticalGroups.length > 0 ? 'critical' : totalOpen > 0 ? 'warning' : ''}`}
+                  >
+                    {!data?.loading && totalOpen > 0 && (
+                      <div className={`card-alert-badge ${criticalGroups.length > 0 ? 'critical' : 'warning'}`}>
+                        {totalOpen}
                       </div>
-                      <span className={`severity-badge-small ${oldestAlert?.severity}`}>
-                        {oldestAlert?.severity}
-                      </span>
+                    )}
+
+                    <div className="card-header">
+                      <div className="tenant-avatar">{tenant.name.substring(0, 2)}</div>
+                      <div className="tenant-info">
+                        <h3 className="tenant-name">{tenant.name}</h3>
+                        {tenant.domain && <p className="tenant-domain">{tenant.domain}</p>}
+                      </div>
                     </div>
-                    <div className="oldest-ticket-title">
-                      {oldestAlert?.title}
+
+                    <div className="card-stats-grid">
+                      <div className="stat-item">
+                        <div className="stat-label">Status</div>
+                        <div className="stat-value green">● {tenant.status}</div>
+                      </div>
+                      <div className="stat-item">
+                        <div className="stat-label">Open</div>
+                        <div className={`stat-value bold ${totalOpen > 0 ? 'orange' : 'green'}`}>
+                          {data?.loading ? '…' : totalOpen}
+                        </div>
+                      </div>
+                      <div className="stat-item">
+                        <div className="stat-label">Critical</div>
+                        <div className={`stat-value bold ${criticalGroups.length > 0 ? 'red' : 'green'}`}>
+                          {data?.loading ? '…' : criticalGroups.length}
+                        </div>
+                      </div>
                     </div>
+
+                    {!data?.loading && oldestAge && oldest && (
+                      <div
+                        className={`oldest-ticket-box ${oldestAge.hours >= 24 ? 'overdue' : ''}`}
+                        data-age={oldestAge.ageCategory}
+                      >
+                        <div className="oldest-ticket-label">OLDEST OPEN DETECTION</div>
+                        <div className="oldest-ticket-content">
+                          <div>
+                            <span className="oldest-ticket-age">{oldestAge.text}</span>
+                            {oldestAge.hours >= 24 && (
+                              <span className="overdue-badge small">OVERDUE</span>
+                            )}
+                          </div>
+                          <span className={`severity-badge-small ${riskToSeverity(oldest.riskScore)}`}>
+                            {riskToSeverity(oldest.riskScore)}
+                          </span>
+                        </div>
+                        <div className="oldest-ticket-title">
+                          {oldest.alertTypes.length > 0 ? oldest.alertTypes.join(', ') : oldest.groupKey}
+                        </div>
+                      </div>
+                    )}
+
+                    {!data?.loading && !oldest && (
+                      <div className="oldest-ticket-box clear">
+                        <span className="clear-text">✓ No open detections</span>
+                      </div>
+                    )}
+
+                    {data?.loading && (
+                      <div className="oldest-ticket-box clear">
+                        <span className="clear-text">Loading…</span>
+                      </div>
+                    )}
+
+                    {data?.error && (
+                      <div className="oldest-ticket-box" style={{ borderColor: '#f97316' }}>
+                        <span style={{ color: '#f97316', fontSize: 12 }}>⚠ {data.error}</span>
+                      </div>
+                    )}
+
+                    <div className="card-footer">
+                      Created: {fmtDate(tenant.created)}
+                    </div>
+
+                    <button
+                      onClick={e => { e.stopPropagation(); setSelectedTenant(tenant); }}
+                      className="btn-primary full-width"
+                    >
+                      View Details →
+                    </button>
                   </div>
-                )}
-
-                {!oldestAlertAge && (
-                  <div className="oldest-ticket-box clear">
-                    <span className="clear-text">✓ No open tickets</span>
-                  </div>
-                )}
-
-                <div className="card-footer">
-                  Created: {new Date(tenant.created).toLocaleDateString()}
-                </div>
-
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedTenant(tenant.id);
-                  }}
-                  className="btn-primary full-width"
-                >
-                  View Details →
-                </button>
-              </div>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
 };
 
 export default Dashboard;
+
