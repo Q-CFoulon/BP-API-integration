@@ -1,0 +1,1052 @@
+{
+	"annotations": {
+		"list": [
+			{
+				"builtIn": 1,
+				"datasource": {
+					"type": "grafana",
+					"uid": "-- Grafana --"
+				},
+				"enable": true,
+				"hide": true,
+				"iconColor": "rgba(0, 211, 255, 1)",
+				"name": "Annotations & Alerts",
+				"type": "dashboard"
+			}
+		]
+	},
+	"description": "Blackpoint Cyber SOC Dashboard v2 - aligned with app layout (Overview, Detections, Tenants).",
+	"editable": true,
+	"fiscalYearStartMonth": 0,
+	"graphTooltip": 1,
+	"id": null,
+	"links": [],
+	"panels": [
+		{
+			"collapsed": false,
+			"gridPos": {
+				"h": 1,
+				"w": 24,
+				"x": 0,
+				"y": 0
+			},
+			"id": 100,
+			"title": "Overview",
+			"type": "row"
+		},
+		{
+			"datasource": {
+				"type": "yesoreyeram-infinity-datasource",
+				"uid": "ff4q58j6l3j0ge"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "thresholds"
+					},
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "#3b82f6",
+								"value": null
+							}
+						]
+					}
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 4,
+				"w": 4,
+				"x": 0,
+				"y": 1
+			},
+			"id": 1,
+			"options": {
+				"colorMode": "value",
+				"graphMode": "none",
+				"justifyMode": "center",
+				"orientation": "auto",
+				"reduceOptions": {
+					"calcs": [
+						"count"
+					],
+					"fields": "",
+					"values": false
+				},
+				"textMode": "auto"
+			},
+			"pluginVersion": "11.6.9",
+			"targets": [
+				{
+					"columns": [],
+					"datasource": {
+						"type": "yesoreyeram-infinity-datasource",
+						"uid": "ff4q58j6l3j0ge"
+					},
+					"filters": [],
+					"format": "table",
+					"parser": "backend",
+					"refId": "A",
+					"root_selector": "data",
+					"source": "url",
+					"type": "json",
+					"url": "https://api.blackpointcyber.com/v1/tenants",
+					"url_options": {
+						"data": "",
+						"method": "GET"
+					}
+				}
+			],
+			"title": "Monitored Tenants",
+			"type": "stat"
+		},
+		{
+			"datasource": {
+				"type": "yesoreyeram-infinity-datasource",
+				"uid": "ff4q58j6l3j0ge"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "thresholds"
+					},
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "#22c55e",
+								"value": null
+							},
+							{
+								"color": "#f97316",
+								"value": 1
+							}
+						]
+					}
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 4,
+				"w": 4,
+				"x": 4,
+				"y": 1
+			},
+			"id": 2,
+			"options": {
+				"colorMode": "value",
+				"graphMode": "none",
+				"justifyMode": "center",
+				"orientation": "auto",
+				"reduceOptions": {
+					"calcs": [
+						"count"
+					],
+					"fields": "/.*enableDeliveryEmail.*/",
+					"values": false
+				},
+				"textMode": "auto"
+			},
+			"pluginVersion": "11.6.9",
+			"targets": [
+				{
+					"columns": [],
+					"datasource": {
+						"type": "yesoreyeram-infinity-datasource",
+						"uid": "ff4q58j6l3j0ge"
+					},
+					"filters": [
+						{
+							"field": "enableDeliveryEmail",
+							"operator": "equals",
+							"value": [
+								"true"
+							]
+						}
+					],
+					"format": "table",
+					"parser": "backend",
+					"refId": "A",
+					"root_selector": "data",
+					"source": "url",
+					"type": "json",
+					"url": "https://api.blackpointcyber.com/v1/tenants",
+					"url_options": {
+						"data": "",
+						"method": "GET"
+					}
+				}
+			],
+			"title": "Email Delivery Enabled",
+			"type": "stat"
+		},
+		{
+			"datasource": {
+				"type": "yesoreyeram-infinity-datasource",
+				"uid": "ff4q58j6l3j0ge"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "thresholds"
+					},
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "#f59e0b",
+								"value": null
+							},
+							{
+								"color": "#ef4444",
+								"value": 10
+							}
+						]
+					}
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 4,
+				"w": 4,
+				"x": 8,
+				"y": 1
+			},
+			"id": 3,
+			"options": {
+				"colorMode": "value",
+				"graphMode": "none",
+				"justifyMode": "center",
+				"orientation": "auto",
+				"reduceOptions": {
+					"calcs": [
+						"count"
+					],
+					"fields": "",
+					"values": false
+				},
+				"textMode": "auto"
+			},
+			"pluginVersion": "11.6.9",
+			"targets": [
+				{
+					"columns": [],
+					"datasource": {
+						"type": "yesoreyeram-infinity-datasource",
+						"uid": "ff4q58j6l3j0ge"
+					},
+					"filters": [],
+					"format": "table",
+					"parser": "backend",
+					"refId": "A",
+					"root_selector": "data",
+					"source": "url",
+					"type": "json",
+					"url": "https://api.blackpointcyber.com/v1/notifications",
+					"url_options": {
+						"data": "",
+						"method": "GET"
+					}
+				}
+			],
+			"title": "Notifications",
+			"type": "stat"
+		},
+		{
+			"datasource": {
+				"type": "yesoreyeram-infinity-datasource",
+				"uid": "ff4q58j6l3j0ge"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "thresholds"
+					},
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "#22d3ee",
+								"value": null
+							}
+						]
+					}
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 4,
+				"w": 4,
+				"x": 12,
+				"y": 1
+			},
+			"id": 4,
+			"options": {
+				"colorMode": "value",
+				"graphMode": "none",
+				"justifyMode": "center",
+				"orientation": "auto",
+				"reduceOptions": {
+					"calcs": [
+						"count"
+					],
+					"fields": "",
+					"values": false
+				},
+				"textMode": "auto"
+			},
+			"pluginVersion": "11.6.9",
+			"targets": [
+				{
+					"columns": [],
+					"datasource": {
+						"type": "yesoreyeram-infinity-datasource",
+						"uid": "ff4q58j6l3j0ge"
+					},
+					"filters": [],
+					"format": "table",
+					"parser": "backend",
+					"refId": "A",
+					"root_selector": "items",
+					"source": "url",
+					"type": "json",
+					"url": "https://api.blackpointcyber.com/v1/alert-groups?take=100&sortByColumn=created&sortDirection=DESC&status=OPEN&tenantId=$tenantId",
+					"url_options": {
+						"data": "",
+						"method": "GET"
+					}
+				}
+			],
+			"title": "Open Detection Groups (Tenant)",
+			"type": "stat"
+		},
+		{
+			"gridPos": {
+				"h": 4,
+				"w": 8,
+				"x": 16,
+				"y": 1
+			},
+			"id": 5,
+			"options": {
+				"code": {
+					"language": "plaintext",
+					"showLineNumbers": false,
+					"showMiniMap": false
+				},
+				"content": "<div style=\"background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-radius: 8px; padding: 16px; height: 100%;\"><h3 style=\"margin:0 0 8px 0;color:#e2e8f0;\">Blackpoint SOC Monitor v2</h3><p style=\"margin:0;color:#94a3b8;font-size:12px;\">Aligned to app views: Overview, Detections, Tenants. Select a tenant to scope detection and asset queries.</p></div>",
+				"mode": "html"
+			},
+			"pluginVersion": "11.6.9",
+			"title": "",
+			"transparent": true,
+			"type": "text"
+		},
+		{
+			"collapsed": false,
+			"gridPos": {
+				"h": 1,
+				"w": 24,
+				"x": 0,
+				"y": 5
+			},
+			"id": 101,
+			"title": "Detections",
+			"type": "row"
+		},
+		{
+			"datasource": {
+				"type": "yesoreyeram-infinity-datasource",
+				"uid": "ff4q58j6l3j0ge"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"custom": {
+						"align": "auto",
+						"cellOptions": {
+							"type": "auto"
+						},
+						"filterable": true
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": null
+							},
+							{
+								"color": "red",
+								"value": 80
+							}
+						]
+					}
+				},
+				"overrides": [
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "status"
+						},
+						"properties": [
+							{
+								"id": "displayName",
+								"value": "Status"
+							},
+							{
+								"id": "custom.width",
+								"value": 120
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "riskScore"
+						},
+						"properties": [
+							{
+								"id": "displayName",
+								"value": "Risk"
+							},
+							{
+								"id": "custom.width",
+								"value": 90
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "alertCount"
+						},
+						"properties": [
+							{
+								"id": "displayName",
+								"value": "Alerts"
+							},
+							{
+								"id": "custom.width",
+								"value": 90
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "created"
+						},
+						"properties": [
+							{
+								"id": "displayName",
+								"value": "Created"
+							},
+							{
+								"id": "unit",
+								"value": "dateTimeAsIso"
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "groupKey"
+						},
+						"properties": [
+							{
+								"id": "displayName",
+								"value": "Group Key"
+							},
+							{
+								"id": "custom.width",
+								"value": 280
+							}
+						]
+					}
+				]
+			},
+			"gridPos": {
+				"h": 11,
+				"w": 24,
+				"x": 0,
+				"y": 6
+			},
+			"id": 20,
+			"options": {
+				"cellHeight": "sm",
+				"footer": {
+					"countRows": true,
+					"fields": "",
+					"reducer": [
+						"count"
+					],
+					"show": true
+				},
+				"showHeader": true,
+				"sortBy": [
+					{
+						"desc": true,
+						"displayName": "Created"
+					}
+				]
+			},
+			"pluginVersion": "11.6.9",
+			"targets": [
+				{
+					"columns": [],
+					"datasource": {
+						"type": "yesoreyeram-infinity-datasource",
+						"uid": "ff4q58j6l3j0ge"
+					},
+					"filters": [
+						{
+							"field": "status",
+							"operator": "equals",
+							"value": [
+								"$statusFilter"
+							]
+						}
+					],
+					"format": "table",
+					"parser": "backend",
+					"refId": "A",
+					"root_selector": "items",
+					"source": "url",
+					"type": "json",
+					"url": "https://api.blackpointcyber.com/v1/alert-groups?take=100&sortByColumn=created&sortDirection=DESC&tenantId=$tenantId",
+					"url_options": {
+						"data": "",
+						"method": "GET"
+					}
+				}
+			],
+			"title": "Detection Groups for Selected Tenant",
+			"type": "table"
+		},
+		{
+			"collapsed": false,
+			"gridPos": {
+				"h": 1,
+				"w": 24,
+				"x": 0,
+				"y": 17
+			},
+			"id": 102,
+			"title": "Tenants",
+			"type": "row"
+		},
+		{
+			"datasource": {
+				"type": "yesoreyeram-infinity-datasource",
+				"uid": "ff4q58j6l3j0ge"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"custom": {
+						"align": "auto",
+						"cellOptions": {
+							"type": "auto"
+						},
+						"filterable": true
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": null
+							}
+						]
+					}
+				},
+				"overrides": [
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "name"
+						},
+						"properties": [
+							{
+								"id": "displayName",
+								"value": "Tenant Name"
+							},
+							{
+								"id": "custom.width",
+								"value": 220
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "id"
+						},
+						"properties": [
+							{
+								"id": "displayName",
+								"value": "Tenant ID"
+							},
+							{
+								"id": "custom.width",
+								"value": 320
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "created"
+						},
+						"properties": [
+							{
+								"id": "displayName",
+								"value": "Created"
+							},
+							{
+								"id": "unit",
+								"value": "dateTimeAsIso"
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "enableDeliveryEmail"
+						},
+						"properties": [
+							{
+								"id": "displayName",
+								"value": "Email Delivery"
+							},
+							{
+								"id": "mappings",
+								"value": [
+									{
+										"options": {
+											"false": {
+												"color": "#ef4444",
+												"index": 1,
+												"text": "Disabled"
+											},
+											"true": {
+												"color": "#22c55e",
+												"index": 0,
+												"text": "Enabled"
+											}
+										},
+										"type": "value"
+									}
+								]
+							}
+						]
+					}
+				]
+			},
+			"gridPos": {
+				"h": 10,
+				"w": 24,
+				"x": 0,
+				"y": 18
+			},
+			"id": 30,
+			"options": {
+				"cellHeight": "sm",
+				"footer": {
+					"countRows": true,
+					"fields": "",
+					"reducer": [
+						"count"
+					],
+					"show": true
+				},
+				"showHeader": true,
+				"sortBy": [
+					{
+						"desc": false,
+						"displayName": "Tenant Name"
+					}
+				]
+			},
+			"pluginVersion": "11.6.9",
+			"targets": [
+				{
+					"columns": [],
+					"datasource": {
+						"type": "yesoreyeram-infinity-datasource",
+						"uid": "ff4q58j6l3j0ge"
+					},
+					"filters": [],
+					"format": "table",
+					"parser": "backend",
+					"refId": "A",
+					"root_selector": "data",
+					"source": "url",
+					"type": "json",
+					"url": "https://api.blackpointcyber.com/v1/tenants",
+					"url_options": {
+						"data": "",
+						"method": "GET"
+					}
+				}
+			],
+			"title": "Tenant Inventory",
+			"type": "table"
+		},
+		{
+			"collapsed": false,
+			"gridPos": {
+				"h": 1,
+				"w": 24,
+				"x": 0,
+				"y": 28
+			},
+			"id": 103,
+			"title": "Assets (Selected Tenant)",
+			"type": "row"
+		},
+		{
+			"datasource": {
+				"type": "yesoreyeram-infinity-datasource",
+				"uid": "ff4q58j6l3j0ge"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "thresholds"
+					},
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "#22d3ee",
+								"value": null
+							}
+						]
+					}
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 6,
+				"w": 12,
+				"x": 0,
+				"y": 29
+			},
+			"id": 40,
+			"options": {
+				"colorMode": "value",
+				"graphMode": "none",
+				"justifyMode": "center",
+				"orientation": "auto",
+				"reduceOptions": {
+					"calcs": [
+						"count"
+					],
+					"fields": "",
+					"values": false
+				},
+				"textMode": "value_and_name"
+			},
+			"pluginVersion": "11.6.9",
+			"targets": [
+				{
+					"columns": [],
+					"datasource": {
+						"type": "yesoreyeram-infinity-datasource",
+						"uid": "ff4q58j6l3j0ge"
+					},
+					"filters": [],
+					"format": "table",
+					"parser": "backend",
+					"refId": "A",
+					"root_selector": "data",
+					"source": "url",
+					"type": "json",
+					"url": "https://api.blackpointcyber.com/v1/assets?class[]=DEVICE&pageSize=100&tenantId=$tenantId",
+					"url_options": {
+						"data": "",
+						"method": "GET"
+					}
+				}
+			],
+			"title": "Device Assets",
+			"type": "stat"
+		},
+		{
+			"datasource": {
+				"type": "yesoreyeram-infinity-datasource",
+				"uid": "ff4q58j6l3j0ge"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "thresholds"
+					},
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "#f59e0b",
+								"value": null
+							}
+						]
+					}
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 6,
+				"w": 12,
+				"x": 12,
+				"y": 29
+			},
+			"id": 41,
+			"options": {
+				"colorMode": "value",
+				"graphMode": "none",
+				"justifyMode": "center",
+				"orientation": "auto",
+				"reduceOptions": {
+					"calcs": [
+						"count"
+					],
+					"fields": "",
+					"values": false
+				},
+				"textMode": "value_and_name"
+			},
+			"pluginVersion": "11.6.9",
+			"targets": [
+				{
+					"columns": [],
+					"datasource": {
+						"type": "yesoreyeram-infinity-datasource",
+						"uid": "ff4q58j6l3j0ge"
+					},
+					"filters": [],
+					"format": "table",
+					"parser": "backend",
+					"refId": "A",
+					"root_selector": "data",
+					"source": "url",
+					"type": "json",
+					"url": "https://api.blackpointcyber.com/v1/assets?class[]=USER&pageSize=100&tenantId=$tenantId",
+					"url_options": {
+						"data": "",
+						"method": "GET"
+					}
+				}
+			],
+			"title": "User Assets",
+			"type": "stat"
+		},
+		{
+			"datasource": {
+				"type": "yesoreyeram-infinity-datasource",
+				"uid": "ff4q58j6l3j0ge"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"custom": {
+						"align": "auto",
+						"cellOptions": {
+							"type": "auto"
+						},
+						"filterable": true
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": null
+							}
+						]
+					}
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 9,
+				"w": 24,
+				"x": 0,
+				"y": 35
+			},
+			"id": 42,
+			"options": {
+				"cellHeight": "sm",
+				"footer": {
+					"countRows": true,
+					"fields": "",
+					"reducer": [
+						"count"
+					],
+					"show": true
+				},
+				"showHeader": true,
+				"sortBy": []
+			},
+			"pluginVersion": "11.6.9",
+			"targets": [
+				{
+					"columns": [],
+					"datasource": {
+						"type": "yesoreyeram-infinity-datasource",
+						"uid": "ff4q58j6l3j0ge"
+					},
+					"filters": [],
+					"format": "table",
+					"parser": "backend",
+					"refId": "A",
+					"root_selector": "data",
+					"source": "url",
+					"type": "json",
+					"url": "https://api.blackpointcyber.com/v1/assets?class[]=$assetClass&pageSize=100&tenantId=$tenantId",
+					"url_options": {
+						"data": "",
+						"method": "GET"
+					}
+				}
+			],
+			"title": "Asset Detail ($assetClass)",
+			"type": "table"
+		}
+	],
+	"preload": false,
+	"schemaVersion": 41,
+	"tags": [
+		"blackpoint",
+		"soc",
+		"security",
+		"monitoring",
+		"v2"
+	],
+	"templating": {
+		"list": [
+			{
+				"current": {},
+				"datasource": {
+					"type": "yesoreyeram-infinity-datasource",
+					"uid": "ff4q58j6l3j0ge"
+				},
+				"hide": 0,
+				"includeAll": false,
+				"label": "Tenant ID",
+				"multi": false,
+				"name": "tenantId",
+				"options": [],
+				"query": {
+					"infinityQuery": {
+						"columns": [
+							{
+								"selector": "id",
+								"text": "id",
+								"type": "string"
+							}
+						],
+						"filters": [],
+						"format": "table",
+						"parser": "backend",
+						"refId": "variable",
+						"root_selector": "data",
+						"source": "url",
+						"type": "json",
+						"url": "https://api.blackpointcyber.com/v1/tenants",
+						"url_options": {
+							"data": "",
+							"method": "GET"
+						}
+					}
+				},
+				"refresh": 1,
+				"regex": "",
+				"skipUrlSync": false,
+				"sort": 1,
+				"type": "query"
+			},
+			{
+				"current": {
+					"selected": true,
+					"text": "OPEN",
+					"value": "OPEN"
+				},
+				"hide": 0,
+				"includeAll": false,
+				"label": "Status",
+				"multi": false,
+				"name": "statusFilter",
+				"options": [
+					{
+						"selected": true,
+						"text": "OPEN",
+						"value": "OPEN"
+					},
+					{
+						"selected": false,
+						"text": "RESOLVED",
+						"value": "RESOLVED"
+					}
+				],
+				"query": "OPEN,RESOLVED",
+				"skipUrlSync": false,
+				"type": "custom"
+			},
+			{
+				"current": {
+					"selected": true,
+					"text": "DEVICE",
+					"value": "DEVICE"
+				},
+				"hide": 0,
+				"includeAll": false,
+				"label": "Asset Class",
+				"multi": false,
+				"name": "assetClass",
+				"options": [
+					{
+						"selected": true,
+						"text": "DEVICE",
+						"value": "DEVICE"
+					},
+					{
+						"selected": false,
+						"text": "USER",
+						"value": "USER"
+					},
+					{
+						"selected": false,
+						"text": "SOFTWARE",
+						"value": "SOFTWARE"
+					}
+				],
+				"query": "DEVICE,USER,SOFTWARE",
+				"skipUrlSync": false,
+				"type": "custom"
+			}
+		]
+	},
+	"time": {
+		"from": "now-30d",
+		"to": "now"
+	},
+	"timepicker": {
+		"refresh_intervals": [
+			"10s",
+			"30s",
+			"1m",
+			"5m",
+			"15m",
+			"30m",
+			"1h"
+		]
+	},
+	"timezone": "browser",
+	"title": "Blackpoint SOC Dashboard v2",
+	"uid": "blackpoint-soc-dashboard-v2",
+	"version": 1
+}
