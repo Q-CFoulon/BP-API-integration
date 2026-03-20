@@ -123,3 +123,56 @@ export interface ApiDiscoveryResult {
   error?: string;
 }
 
+// ---------------------------------------------------------------------------
+// Detection Report (application-level reporting)
+// ---------------------------------------------------------------------------
+
+/** Statistics for a single detection/alert group */
+export interface DetectionStats {
+  totalDetections: number;
+  openDetections: number;
+  resolvedDetections: number;
+  averageRiskScore: number;
+  maxRiskScore: number;
+  minRiskScore: number;
+}
+
+/** Detection trend data aggregated by week */
+export interface DetectionTrendEntry {
+  week: string;
+  date: string;
+  detectionCount: number;
+  resolvedCount: number;
+  openCount: number;
+}
+
+/** Historical reporting summary for a tenant */
+export interface TenantDetectionReport {
+  tenantId: string;
+  tenantName: string;
+  reportGeneratedAt: string;
+  stats: DetectionStats;
+  recentResolved: AlertGroup[];
+  trends?: DetectionTrendEntry[];
+  topAlertTypes?: { type: string; count: number }[];
+  riskScoreDistribution?: { range: string; count: number }[];
+}
+
+/** Closed/Resolved detection for after-the-fact review */
+export interface ClosedDetection {
+  id: string;
+  tenantId: string;
+  tenantName?: string;
+  groupKey: string;
+  status: 'RESOLVED';
+  alertCount: number;
+  riskScore: number;
+  alertTypes: string[];
+  hostname?: string;
+  username?: string;
+  createdDate: string;
+  resolvedDate?: string;
+  daysOpen?: number;
+  ticketId?: string;
+}
+

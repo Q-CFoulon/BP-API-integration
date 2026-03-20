@@ -1,4 +1,4 @@
-# Blackpoint Cyber API Limitations
+# Blackpoint Cyber API Limitations & Capabilities
 
 ## Overview
 
@@ -6,7 +6,94 @@ This document outlines the discovered limitations and available endpoints of the
 
 ## Testing Date
 
-Last tested: **March 9, 2026** — comprehensive probe of 83 endpoints, including all known asset class variants.
+Last tested: **March 20, 2026** — comprehensive probe of 83 endpoints + full OpenAPI spec analysis from `compassone-api.json` v1.4.0
+
+## API Base URL
+
+```text
+https://api.blackpointcyber.com/v1
+```
+
+## Authentication
+
+- **Method:** Bearer token
+- **Header:** `Authorization: Bearer {api_key}`
+- **Format:** API keys start with `bpc_`
+- **Additional header (required by some endpoints):** `x-tenant-id: {tenantId}`
+
+---
+
+## ✅ CRITICAL UPDATE: Closed Detections ARE Available!
+
+**YES - Historical closed/resolved detections are accessible via the API for after-the-fact review.**
+
+### GET /v1/alert-groups - Full Query Capabilities
+
+**Status:** 200 OK — returns alert groups with full historical data
+
+**Query Parameters:**
+
+| Parameter | Type | Purpose |
+|-----------|------|---------|
+| `status` | array | Filter by status: `OPEN`, `RESOLVED` |
+| `take` | number | Page size (default: 100) |
+| `skip` | number | Pagination offset |
+| `since` | ISO 8601 datetime | Show groups created since date (max 90 days ago) |
+| `sortByColumn` | string | Sort by: `alertCount`, `alertTypes`, `created`, `hostname`, `status`, `username` |
+| `sortDirection` | string | `ASC` or `DESC` |
+| `detectionType` | string | Filter by detection type |
+| `search` | string | Search by alertTypes, username, hostname |
+| `minAlertsCount` | number | Minimum alert count |
+| `maxAlertsCount` | number | Maximum alert count |
+
+**Response Fields (AlertGroup):**
+
+```json
+{
+  "id": "string",
+  "customerId": "string",
+  "groupKey": "string",
+  "status": "RESOLVED",
+  "alertCount": 42,
+  "riskScore": 75,
+  "alertTypes": ["alert_type_1", "alert_type_2"],
+  "created": "2026-03-15T10:30:00Z",
+  "updated": "2026-03-15T15:45:00Z",
+  "ticketId": "string",
+  "alerts": []
+}
+```
+
+### Example Queries
+
+**Fetch all resolved detections:**
+```bash
+GET /v1/alert-groups?status=RESOLVED&take=100
+x-tenant-id: {tenantId}
+Authorization: Bearer {api_key}
+```
+
+**Fetch closed detections from last 30 days:**
+```bash
+GET /v1/alert-groups?status=RESOLVED&since=2026-02-18T00:00:00Z&take=100
+x-tenant-id: {tenantId}
+```
+
+**Fetch high-risk closed detections sorted by creation date:**
+```bash
+GET /v1/alert-groups?status=RESOLVED&minAlertsCount=5&sortByColumn=created&sortDirection=DESC
+x-tenant-id: {tenantId}
+```
+
+### Pagination
+
+- **Response includes:** `items[]`, `total` (total count), `start`, `end`
+- **Max page size:** 100 items
+- **Auto-paginate:** Use `take=100` and increment `skip` by 100 until `items.length < 100`
+
+---
+
+## ✅ Available Endpoints (Returning Real Data)
 
 ## API Base URL
 

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './Dashboard.css';
+import ClosedDetectionsViewer from './ClosedDetectionsViewer';
+import DetectionReportingDashboard from './DetectionReportingDashboard';
 
 // ---------------------------------------------------------------------------
 // Types — matching CompassOne API v1.4.0 spec
@@ -155,6 +157,13 @@ const TenantDetailPage: React.FC<TenantDetailProps> = ({ tenant, onBack }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'open' | 'closed' | 'report'>('open');
+  const [closedDetections, setClosedDetections] = useState<AlertGroup[]>([]);
+  const [closedLoading, setClosedLoading] = useState(false);
+  const [closedError, setClosedError] = useState<string | null>(null);
+  const [reportData, setReportData] = useState<any>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -163,6 +172,111 @@ const TenantDetailPage: React.FC<TenantDetailProps> = ({ tenant, onBack }) => {
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
   }, [tenant.id]);
+
+  // Fetch closed detections when 'closed' tab is opened
+  useEffect(() => {
+    if (activeTab === 'closed' && closedDetections.length === 0) {
+      setClosedLoading(true);
+      (async () => {
+        try {
+          const all: AlertGroup[] = [];
+          const take = 100;
+          for (let skip = 0; ; skip += take) {
+            const qs = new URLSearchParams({
+              take: String(take),
+              skip: String(skip),
+              status: 'RESOLVED',
+              sortByColumn: 'created',
+              sortDirection: 'DESC'
+            });
+            const data = await apiFetch<AlertGroupsResponse>(`/v1/alert-groups?${qs}`, tenant.id);
+            all.push(...data.items);
+            if (data.items.length < take) break;
+          }
+          setClosedDetections(all);
+        } catch (err) {
+          setClosedError(err instanceof Error ? err.message : 'Unknown error');
+        } finally {
+          setClosedLoading(false);
+        }
+      })();
+    }
+  }, [activeTab, tenant.id, closedDetections.length]);
+
+  // Generate report data when 'report' tab is opened
+  useEffect(() => {
+    if (activeTab === 'report' && !reportData) {
+      setReportLoading(true);
+      (async () => {
+        try {
+          const all: AlertGroup[] = [];
+          const take = 100;
+          for (let skip = 0; ; skip += take) {
+            const qs = new URLSearchParams({
+              take: String(take),
+              skip: String(skip),
+              sortByColumn: 'created',
+              sortDirection: 'DESC'
+            });
+            const data = await apiFetch<AlertGroupsResponse>(`/v1/alert-groups?${qs}`, tenant.id);
+            all.push(...data.items);
+            if (data.items.length < take) break;
+          }
+
+          const openGroups = all.filter(g => g.status === 'OPEN');
+          const resolvedGroups = all.filter(g => g.status === 'RESOLVED');
+          const riskScores = all.map(g => g.riskScore);
+
+          // Calculate risk distribution
+          const distribution = [
+            { range: '0-20', count: all.filter(g => g.riskScore >= 0 && g.riskScore <= 20).length },
+            { range: '21-40', count: all.filter(g => g.riskScore >= 21 && g.riskScore <= 40).length },
+            { range: '41-60', count: all.filter(g => g.riskScore >= 41 && g.riskScore <= 60).length },
+            { range: '61-80', count: all.filter(g => g.riskScore >= 61 && g.riskScore <= 80).length },
+            { range: '81-100', count: all.filter(g => g.riskScore >= 81 && g.riskScore <= 100).length }
+          ];
+
+          // Calculate top alert types
+          const typeCounts: Record<string, number> = {};
+          all.forEach(g => {
+            g.alertTypes.forEach(t => {
+              typeCounts[t] = (typeCounts[t] || 0) + 1;
+            });
+          });
+          const topAlertTypes = Object.entries(typeCounts)
+            .map(([type, count]) => ({ type, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 10);
+
+          // Get recent closed detections
+          const recentClosed = all
+            .filter(g => g.status === 'RESOLVED')
+            .sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime())
+            .slice(0, 20);
+
+          setReportData({
+            tenantName: tenant.name,
+            stats: {
+              totalDetections: all.length,
+              openDetections: openGroups.length,
+              resolvedDetections: resolvedGroups.length,
+              averageRiskScore: riskScores.length > 0 ? riskScores.reduce((a, b) => a + b, 0) / riskScores.length : 0,
+              maxRiskScore: riskScores.length > 0 ? Math.max(...riskScores) : 0,
+              minRiskScore: riskScores.length > 0 ? Math.min(...riskScores) : 0
+            },
+            topAlertTypes,
+            riskScoreDistribution: distribution,
+            recentClosed,
+            reportGeneratedAt: new Date().toISOString()
+          });
+        } catch (err) {
+          setReportError(err instanceof Error ? err.message : 'Unknown error');
+        } finally {
+          setReportLoading(false);
+        }
+      })();
+    }
+  }, [activeTab, tenant.id, reportData]);
 
   const openGroups = groups.filter(g => g.status === 'OPEN');
   const resolvedGroups = groups.filter(g => g.status === 'RESOLVED');
@@ -237,11 +351,36 @@ const TenantDetailPage: React.FC<TenantDetailProps> = ({ tenant, onBack }) => {
 
         {!loading && !error && (
           <div>
-            <h2 className="section-title large">Detection Groups ({groups.length})</h2>
-            {groups.length === 0 ? (
-              <div className="empty-state">No detection groups for this tenant</div>
-            ) : (
-              <div className="alerts-list">
+            {/* Tab Navigation */}
+            <div className="tab-navigation">
+              <button
+                className={`tab-button ${activeTab === 'open' ? 'active' : ''}`}
+                onClick={() => setActiveTab('open')}
+              >
+                📋 Open Detections ({groups.filter(g => g.status === 'OPEN').length})
+              </button>
+              <button
+                className={`tab-button ${activeTab === 'closed' ? 'active' : ''}`}
+                onClick={() => setActiveTab('closed')}
+              >
+                ✓ Closed Detections ({groups.filter(g => g.status === 'RESOLVED').length})
+              </button>
+              <button
+                className={`tab-button ${activeTab === 'report' ? 'active' : ''}`}
+                onClick={() => setActiveTab('report')}
+              >
+                📊 Detection Report
+              </button>
+            </div>
+
+            {/* Open Detections Tab */}
+            {activeTab === 'open' && (
+              <div>
+                <h2 className="section-title large">Detection Groups ({groups.length})</h2>
+                {groups.length === 0 ? (
+                  <div className="empty-state">No detection groups for this tenant</div>
+                ) : (
+                  <div className="alerts-list">
                 {groups.map(group => {
                   const severity = riskToSeverity(group.riskScore);
                   const age = getAlertAge(group.created);
@@ -373,6 +512,51 @@ const TenantDetailPage: React.FC<TenantDetailProps> = ({ tenant, onBack }) => {
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </div>
+            )}
+
+            {/* Closed Detections Tab */}
+            {activeTab === 'closed' && (
+              <div>
+                <h2 className="section-title large">Closed Detections ({closedDetections.length})</h2>
+                <ClosedDetectionsViewer
+                  detections={closedDetections.map(g => ({
+                    id: g.id,
+                    tenantId: g.customerId,
+                    groupKey: g.groupKey,
+                    status: 'RESOLVED' as const,
+                    alertCount: g.alertCount,
+                    riskScore: g.riskScore,
+                    alertTypes: g.alertTypes,
+                    createdDate: g.created,
+                    resolvedDate: g.updated || undefined,
+                    daysOpen: g.updated ? Math.ceil((new Date(g.updated).getTime() - new Date(g.created).getTime()) / (1000 * 60 * 60 * 24)) : undefined,
+                    ticketId: g.ticketId
+                  }))}
+                  isLoading={closedLoading}
+                  error={closedError}
+                />
+              </div>
+            )}
+
+            {/* Detection Report Tab */}
+            {activeTab === 'report' && (
+              <div>
+                {reportData ? (
+                  <DetectionReportingDashboard
+                    tenantName={reportData.tenantName}
+                    stats={reportData.stats}
+                    topAlertTypes={reportData.topAlertTypes}
+                    riskScoreDistribution={reportData.riskScoreDistribution}
+                    recentClosed={reportData.recentClosed}
+                    reportGeneratedAt={reportData.reportGeneratedAt}
+                    isLoading={reportLoading}
+                  />
+                ) : (
+                  <div>{reportLoading ? 'Loading report...' : reportError ? `Error: ${reportError}` : 'No report data'}</div>
+                )}
               </div>
             )}
           </div>

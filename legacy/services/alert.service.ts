@@ -156,6 +156,84 @@ export class AlertService {
       tenantId
     );
   }
+
+  /**
+   * Fetch all resolved/closed alert groups for a tenant, auto-paginating.
+   * Useful for after-the-fact review and reporting.
+   */
+  async fetchAllResolvedAlertGroups(
+    tenantId: string,
+    options: { since?: string } = {}
+  ): Promise<AlertGroup[]> {
+    const allItems: AlertGroup[] = [];
+    const take = 100;
+    let skip = 0;
+
+    while (true) {
+      const page = await this.fetchAlertGroups(tenantId, {
+        take,
+        skip,
+        status: ['RESOLVED'],
+        sortByColumn: 'created',
+        sortDirection: 'DESC',
+        since: options.since,
+      });
+
+      allItems.push(...page.items);
+
+      if (allItems.length >= page.total || page.items.length < take) break;
+      skip += take;
+    }
+
+    return allItems;
+  }
+
+  /**
+   * Fetch both open and resolved alert groups for a tenant (all statuses).
+   * Useful for comprehensive reporting.
+   */
+  async fetchAllAlertGroups(
+    tenantId: string,
+    options: { since?: string } = {}
+  ): Promise<AlertGroup[]> {
+    const allItems: AlertGroup[] = [];
+    const take = 100;
+    let skip = 0;
+
+    while (true) {
+      const page = await this.fetchAlertGroups(tenantId, {
+        take,
+        skip,
+        sortByColumn: 'created',
+        sortDirection: 'DESC',
+        since: options.since,
+      });
+
+      allItems.push(...page.items);
+
+      if (allItems.length >= page.total || page.items.length < take) break;
+      skip += take;
+    }
+
+    return allItems;
+  }
+
+  /**
+   * Get the count of resolved alert groups for a tenant.
+   */
+  async fetchResolvedAlertGroupCount(
+    tenantId: string,
+    options: {
+      startDate?: string;
+      endDate?: string;
+      detectionType?: DetectionType;
+    } = {}
+  ): Promise<{ count: number }> {
+    return this.fetchAlertGroupCount(tenantId, {
+      ...options,
+      status: 'RESOLVED',
+    });
+  }
 }
 
 export const createAlertService = (apiClient: BlackpointApiClient): AlertService => {
