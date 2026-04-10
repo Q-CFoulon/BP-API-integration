@@ -2,7 +2,8 @@
     "chat.tools.terminal.autoApprove": {
         "git clone": true,
         "npm install": true,
-        "npm run dev": true
+        "npm run dev": true,
+        "npx react-scripts": true
     },
     "python.analysis.extraPaths": [
         "c:\\Users\\CFoulon\\.vscode\\extensions\\ms-security.ms-sentinel-2.0.0\\python",

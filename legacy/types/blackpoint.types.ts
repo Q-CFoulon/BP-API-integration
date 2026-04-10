@@ -106,6 +106,13 @@ export interface NotificationChannel {
   [key: string]: unknown;
 }
 
+/** A single notification from GET /v1/notifications */
+export interface Notification {
+  message: string;
+  /** ISO 8601 date-time */
+  createdAt: string;
+}
+
 // ---------------------------------------------------------------------------
 // Dashboard summary (application-level, not an API type)
 // ---------------------------------------------------------------------------
@@ -113,6 +120,7 @@ export interface NotificationChannel {
 export interface DashboardSummary {
   totalTenants: number;
   tenants: Tenant[];
+  notifications: Notification[];
 }
 
 export interface ApiDiscoveryResult {

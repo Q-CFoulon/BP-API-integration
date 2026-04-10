@@ -6,6 +6,13 @@
  */
 const { createProxyMiddleware } = require('http-proxy-middleware');
 module.exports = function (app) {
+    if (process.env.DEFENDER_XDR_PROXY_TARGET) {
+        app.use('/api/defender-xdr', createProxyMiddleware({
+            target: process.env.DEFENDER_XDR_PROXY_TARGET,
+            changeOrigin: true,
+            logLevel: 'warn',
+        }));
+    }
     app.use('/v1', createProxyMiddleware({
         target: 'https://api.blackpointcyber.com',
         changeOrigin: true,

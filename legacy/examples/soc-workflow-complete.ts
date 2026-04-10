@@ -3,6 +3,7 @@
  * Demonstrates real-time tenant monitoring and system status
  */
 
+import 'dotenv/config';
 import { createApiClient } from '../services/blackpoint-api.service';
 import { createDashboardService } from '../services/dashboard.service';
 

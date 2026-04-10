@@ -50,6 +50,9 @@ export const BLACKPOINT_ENDPOINTS = {
   ACCOUNTS: '/accounts',
   USERS: '/users',
 
+  // Notifications
+  NOTIFICATIONS: '/notifications',
+
   // Notification channels (event-signal)
   EVENT_SIGNAL_CHANNELS: '/event-signal/channels/list',
   EVENT_SIGNAL_EMAIL_CHANNELS: '/event-signal/email-channels',

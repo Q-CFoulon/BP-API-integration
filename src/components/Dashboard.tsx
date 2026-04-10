@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import './Dashboard.css';
 import ClosedDetectionsViewer from './ClosedDetectionsViewer';
 import DetectionReportingDashboard from './DetectionReportingDashboard';
+import TenantXdrOwnershipPanel from './TenantXdrOwnershipPanel';
+import UnifiedSecurityPanel from './UnifiedSecurityPanel';
 
 // ---------------------------------------------------------------------------
 // Types — matching CompassOne API v1.4.0 spec
@@ -157,7 +159,7 @@ const TenantDetailPage: React.FC<TenantDetailProps> = ({ tenant, onBack }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'open' | 'closed' | 'report'>('open');
+  const [activeTab, setActiveTab] = useState<'open' | 'closed' | 'report' | 'xdr' | 'security'>('open');
   const [closedDetections, setClosedDetections] = useState<AlertGroup[]>([]);
   const [closedLoading, setClosedLoading] = useState(false);
   const [closedError, setClosedError] = useState<string | null>(null);
@@ -175,53 +177,55 @@ const TenantDetailPage: React.FC<TenantDetailProps> = ({ tenant, onBack }) => {
 
   // Fetch closed detections when 'closed' tab is opened
   useEffect(() => {
-    if (activeTab === 'closed' && closedDetections.length === 0) {
-      setClosedLoading(true);
-      (async () => {
-        try {
-          const all: AlertGroup[] = [];
-          const take = 100;
-          for (let skip = 0; ; skip += take) {
-            const qs = new URLSearchParams({
-              take: String(take),
-              skip: String(skip),
-              status: 'RESOLVED',
-              sortByColumn: 'created',
-              sortDirection: 'DESC'
-            });
-            const data = await apiFetch<AlertGroupsResponse>(`/v1/alert-groups?${qs}`, tenant.id);
-            all.push(...data.items);
-            if (data.items.length < take) break;
-          }
-          setClosedDetections(all);
-        } catch (err) {
-          setClosedError(err instanceof Error ? err.message : 'Unknown error');
-        } finally {
-          setClosedLoading(false);
+    if (activeTab !== 'closed' || closedDetections.length > 0) return;
+    let active = true;
+    setClosedLoading(true);
+    (async () => {
+      try {
+        const all: AlertGroup[] = [];
+        const take = 100;
+        for (let skip = 0; ; skip += take) {
+          const qs = new URLSearchParams({
+            take: String(take),
+            skip: String(skip),
+            status: 'RESOLVED',
+            sortByColumn: 'created',
+            sortDirection: 'DESC'
+          });
+          const data = await apiFetch<AlertGroupsResponse>(`/v1/alert-groups?${qs}`, tenant.id);
+          all.push(...data.items);
+          if (data.items.length < take) break;
         }
-      })();
-    }
+        if (active) setClosedDetections(all);
+      } catch (err) {
+        if (active) setClosedError(err instanceof Error ? err.message : 'Unknown error');
+      } finally {
+        if (active) setClosedLoading(false);
+      }
+    })();
+    return () => { active = false; };
   }, [activeTab, tenant.id, closedDetections.length]);
 
   // Generate report data when 'report' tab is opened
   useEffect(() => {
-    if (activeTab === 'report' && !reportData) {
-      setReportLoading(true);
-      (async () => {
-        try {
-          const all: AlertGroup[] = [];
-          const take = 100;
-          for (let skip = 0; ; skip += take) {
-            const qs = new URLSearchParams({
-              take: String(take),
-              skip: String(skip),
-              sortByColumn: 'created',
-              sortDirection: 'DESC'
-            });
-            const data = await apiFetch<AlertGroupsResponse>(`/v1/alert-groups?${qs}`, tenant.id);
-            all.push(...data.items);
-            if (data.items.length < take) break;
-          }
+    if (activeTab !== 'report' || reportData) return;
+    let active = true;
+    setReportLoading(true);
+    (async () => {
+      try {
+        const all: AlertGroup[] = [];
+        const take = 100;
+        for (let skip = 0; ; skip += take) {
+          const qs = new URLSearchParams({
+            take: String(take),
+            skip: String(skip),
+            sortByColumn: 'created',
+            sortDirection: 'DESC'
+          });
+          const data = await apiFetch<AlertGroupsResponse>(`/v1/alert-groups?${qs}`, tenant.id);
+          all.push(...data.items);
+          if (data.items.length < take) break;
+        }
 
           const openGroups = all.filter(g => g.status === 'OPEN');
           const resolvedGroups = all.filter(g => g.status === 'RESOLVED');
@@ -254,7 +258,7 @@ const TenantDetailPage: React.FC<TenantDetailProps> = ({ tenant, onBack }) => {
             .sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime())
             .slice(0, 20);
 
-          setReportData({
+          if (active) setReportData({
             tenantName: tenant.name,
             stats: {
               totalDetections: all.length,
@@ -270,12 +274,12 @@ const TenantDetailPage: React.FC<TenantDetailProps> = ({ tenant, onBack }) => {
             reportGeneratedAt: new Date().toISOString()
           });
         } catch (err) {
-          setReportError(err instanceof Error ? err.message : 'Unknown error');
+          if (active) setReportError(err instanceof Error ? err.message : 'Unknown error');
         } finally {
-          setReportLoading(false);
+          if (active) setReportLoading(false);
         }
       })();
-    }
+    return () => { active = false; };
   }, [activeTab, tenant.id, reportData]);
 
   const openGroups = groups.filter(g => g.status === 'OPEN');
@@ -370,6 +374,18 @@ const TenantDetailPage: React.FC<TenantDetailProps> = ({ tenant, onBack }) => {
                 onClick={() => setActiveTab('report')}
               >
                 📊 Detection Report
+              </button>
+              <button
+                className={`tab-button ${activeTab === 'xdr' ? 'active' : ''}`}
+                onClick={() => setActiveTab('xdr')}
+              >
+                🧭 XDR Ownership
+              </button>
+              <button
+                className={`tab-button ${activeTab === 'security' ? 'active' : ''}`}
+                onClick={() => setActiveTab('security')}
+              >
+                🔐 Security Feed
               </button>
             </div>
 
@@ -558,6 +574,14 @@ const TenantDetailPage: React.FC<TenantDetailProps> = ({ tenant, onBack }) => {
                   <div>{reportLoading ? 'Loading report...' : reportError ? `Error: ${reportError}` : 'No report data'}</div>
                 )}
               </div>
+            )}
+
+            {activeTab === 'xdr' && (
+              <TenantXdrOwnershipPanel tenant={tenant} blackpointGroups={groups} />
+            )}
+
+            {activeTab === 'security' && (
+              <UnifiedSecurityPanel tenantId={tenant.id} tenantName={tenant.name} />
             )}
           </div>
         )}

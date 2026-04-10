@@ -79,6 +79,19 @@ npm run discover
 - Last update timestamps
 - Manual refresh capability
 
+### Microsoft Defender XDR Correlation
+
+- Tenant detail pages now include an `XDR Ownership` view
+- The view separates `Blackpoint MDR`, `Shared`, `Quisitive SecOps`, and `Customer IT` work
+- If a secure backend is available at `/api/defender-xdr/tenants/:id/summary`, the dashboard uses it
+- Without a backend, the dashboard falls back to deterministic mock Defender XDR data so the workflow can be exercised safely
+
+To proxy a local backend during development, set:
+
+```powershell
+$env:DEFENDER_XDR_PROXY_TARGET = "http://localhost:7071"
+```
+
 ## API Endpoints
 
 ### Available Endpoints
