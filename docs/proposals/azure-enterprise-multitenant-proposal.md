@@ -26,6 +26,8 @@ The proposed SecOps platform integrates Spyglass MDR and SecOps services with th
 | One-time build (AI-accelerated) | $9,360 (120 hours) |
 | Recurring annual cost | $10,268/year |
 | Annual labor savings (baseline) | $36,864/year |
+| Build labor split (40/60 model) | Onshore $6,000 (50 hours) and Offshore $3,360 (70 hours) |
+| Baseline labor savings split (40/60 model) | Onshore $23,040/year and Offshore $13,824/year |
 | Payback period | ~4.2 months baseline |
 | Year-1 ROI | ~88% baseline |
 | Year-2+ ROI | ~259% baseline |
@@ -42,7 +44,7 @@ The proposed SecOps platform integrates Spyglass MDR and SecOps services with th
 | --- | --- |
 | Business value | API-driven workflows, reduced swivel-chair operations, and AI-assisted triage/reporting |
 | Strategic outcomes | Zero public ingress, reusable AI framework, VRM service maturity, and audit evidence readiness |
-| Headline economics | Baseline build $9,360, recurring annual baseline $10,268, scalable labor-avoidance upside |
+| Headline economics | Baseline build $9,360, recurring annual baseline $10,268, plus explicit 40/60 onshore-offshore labor split economics |
 | Operational target | Keep runtime below $5,000/month while scaling from 50 to 300 tenants |
 | Decision outputs | VRM ownership confirmation, Event Hub ingestion readiness, and production cutover approval |
 
@@ -194,6 +196,14 @@ Assumptions:
 | Program management | ~20 hours | $120/hour | $2,400 |
 | One-time build total | 120 hours | Blended | $9,360 |
 
+### Onshore vs Offshore Labor Cost Split (Build)
+
+| Labor Segment | Effort | Loaded Rate | Cost | Share |
+| --- | --- | --- | --- | --- |
+| Offshore delivery engineering | ~70 hours | $48/hour | $3,360 | 35.9% |
+| Onshore security and program roles | ~50 hours | $120/hour | $6,000 | 64.1% |
+| Total | 120 hours | Blended | $9,360 | 100% |
+
 ### Recurring Annual Cost
 
 | Recurring Component | Annual Cost |
@@ -211,6 +221,13 @@ Assumptions:
 | +1 additional customer | $46,080/year equivalent uplift trajectory |
 | +3 additional customers | $64,512/year equivalent uplift trajectory |
 | +5 additional customers | $82,944/year |
+
+### Onshore vs Offshore Labor Savings Split (40/60 Hours)
+
+| Scenario | Onshore Labor Savings (40% hours @ $120/hour) | Offshore Labor Savings (60% hours @ $48/hour) | Total Annual Savings |
+| --- | --- | --- | --- |
+| Baseline load (40 hours/month) | $23,040/year | $13,824/year | $36,864/year |
+| +5 customer growth total (90 hours/month) | $51,840/year | $31,104/year | $82,944/year |
 
 ### ROI Summary
 

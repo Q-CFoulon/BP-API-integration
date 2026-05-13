@@ -26,6 +26,8 @@ This starter proposal delivers the SecOps App Revised architecture at reduced in
 | One-time build target | $4,800-$6,200 |
 | Recurring annual run-rate target | $9,120-$12,400 |
 | Baseline labor savings estimate | ~$18,432/year |
+| Build labor split (40/60 model) | Onshore ~$3,070-$3,970 and Offshore ~$1,730-$2,230 |
+| Baseline labor savings split (40/60 model) | Onshore ~$11,520/year and Offshore ~$6,912/year |
 | Pilot payback expectation | ~6-9 months, depending on realized automation throughput |
 
 ### Executive Decision Points
@@ -40,7 +42,7 @@ This starter proposal delivers the SecOps App Revised architecture at reduced in
 | --- | --- |
 | Business value | API workflows replace manual case portal-checking with a unified analyst view |
 | Strategic outcomes | Zero inbound public exposure, private service access, and audit-ready monitoring baseline |
-| Headline economics | One-time build target $4,800-$6,200 and recurring annual run-rate $9,120-$12,400 |
+| Headline economics | One-time build target $4,800-$6,200, recurring annual run-rate $9,120-$12,400, and explicit 40/60 onshore-offshore labor split economics |
 | Delivery objective | Six-week controlled launch with policy-first controls and Dev/Prod separation |
 | Decision outputs | VRM ownership confirmation, Event Hub forwarding readiness, and pilot go-live approval |
 
@@ -181,6 +183,14 @@ Assumptions:
 | Program management and rollout coordination | $1,000-$1,200 |
 | One-time build total | $4,800-$6,200 |
 
+### Onshore vs Offshore Labor Cost Split (Build Range)
+
+| Labor Segment | Estimated Cost Range | Share Assumption |
+| --- | --- | --- |
+| Offshore delivery engineering | ~$1,730-$2,230 | ~36% |
+| Onshore security and program roles | ~$3,070-$3,970 | ~64% |
+| Total one-time build | $4,800-$6,200 | 100% |
+
 ### Recurring Annual Cost
 
 | Recurring Component | Annual Range |
@@ -196,6 +206,13 @@ Assumptions:
 | Baseline starter load | ~$18,432/year |
 | +3 customer growth | ~$33,178/year |
 | +5 customer growth | ~$46,080/year |
+
+### Onshore vs Offshore Labor Savings Split (40/60 Hours)
+
+| Scenario | Onshore Labor Savings (40% hours @ $120/hour) | Offshore Labor Savings (60% hours @ $48/hour) | Total Annual Savings |
+| --- | --- | --- | --- |
+| Baseline starter load (20 hours/month) | ~$11,520/year | ~$6,912/year | ~$18,432/year |
+| +5 customer growth scenario | ~$28,800/year | ~$17,280/year | ~$46,080/year |
 
 ### ROI Summary (Indicative)
 
