@@ -1,172 +1,169 @@
 # Blackpoint Cyber API Integration
 
-SOC Operations Dashboard for monitoring Blackpoint Cyber protected clients.
+SOC operations dashboard for monitoring Blackpoint-protected tenants, correlating Defender XDR ownership, and supporting closeout governance.
+
+## Latest Changes
+
+- Updated detections integration to CompassOne v1.7.0 semantics, including list/count/by-week alignment and expanded filters.
+- Added native report endpoint integration for list, PDF URL, binary payload, and JSON payload retrieval.
+- Added tenant closeout reconciliation metrics between Blackpoint detections and Office365 Defender XDR incidents.
+- Added closeout governance export view with CSV output fields for BP ticket ID, XDR incident reference, and reconciliation status.
+- Added analyst-confirmed correlation overrides that persist per tenant and are reused on future loads.
 
 ## Features
 
-- 🛡️ **Tenant Monitoring** - Real-time oversight of all protected clients
-- 📊 **Professional Dashboard UI** - Inspired by Quisitive Spyglass MDR design
-- 🔄 **Auto-Refresh** - Configurable refresh intervals for live data
-- 📱 **Responsive Design** - Modern, clean interface for SOC analysts
-- 🔒 **Secure API Integration** - Bearer token authentication with Blackpoint Cyber API
+- Multi-tenant monitoring dashboard.
+- Detection lifecycle visibility for OPEN and RESOLVED alert groups.
+- Detection reporting tab with aggregate stats, risk distribution, and recent closed detections.
+- Native report inventory and drill-down actions.
+- Microsoft Defender XDR ownership and triage queue view.
+- Closeout governance export and analyst override workflow.
 
 ## Quick Start
 
 ### Prerequisites
 
-- Node.js 16+ installed
-- Blackpoint Cyber API key
+- Node.js 16+
+- Blackpoint API key
 
-### Installation
+### Install
 
 ```bash
 npm install
 ```
 
-### Configuration
-
-Set your API key as an environment variable:
+### Configure Environment
 
 ```powershell
-# PowerShell
+# Legacy TypeScript services and scripts
 $env:BLACKPOINT_API_KEY = "your-api-key-here"
+$env:BLACKPOINT_API_URL = "https://api.blackpointcyber.com"
 
-# Or create a .env file
-BLACKPOINT_API_KEY=your-api-key-here
-BLACKPOINT_API_URL=https://api.blackpointcyber.com
+# React dashboard service calls
+$env:REACT_APP_BLACKPOINT_API_KEY = "your-api-key-here"
 ```
 
-### Running the Dashboard
-
-**Terminal Dashboard:**
+### Run
 
 ```bash
-npm run dev
+npm run dev        # legacy workflow sample
+npm run dashboard  # React UI
+npm run test-api   # quick API check
+npm run discover   # endpoint probe utility
 ```
 
-**Web Dashboard (React UI):**
+## Functioning Detections Endpoints
 
-```bash
-npm run dashboard
-```
+All detections endpoints below are implemented and used in the current integration. Tenant-scoped requests should include `x-tenant-id`.
 
-**Quick API Test:**
+|Endpoint|Status|Primary use in this repo|
+|---|---|---|
+|`GET /v1/alert-groups`|Functioning|List OPEN and RESOLVED detections with filtering and pagination|
+|`GET /v1/alert-groups/{alertGroupId}`|Functioning|Fetch one detection group by ID|
+|`GET /v1/alert-groups/{alertGroupId}/alerts`|Functioning|Fetch underlying alerts for a detection group|
+|`GET /v1/alert-groups/count`|Functioning|Count detections by filter set|
+|`GET /v1/alert-groups/alert-groups-by-week`|Functioning|Weekly detection trend metrics|
+|`GET /v1/alert-groups/top-detections-by-entity`|Functioning|Top detections grouped by entity|
+|`GET /v1/alert-groups/top-detections-by-threat`|Functioning|Top detections grouped by threat|
 
-```bash
-npm run test-api
-```
+Validated list filtering on `/v1/alert-groups` includes:
 
-**Discover Available Endpoints:**
+- `status` (`OPEN`, `RESOLVED`)
+- `type` (`CR`, `MDR`)
+- `search`
+- `tunnelSearch`
+- `since`
+- `minAlertsCount`
+- `maxAlertsCount`
+- `sortByColumn`
+- `sortDirection`
+- `take`
+- `skip`
 
-```bash
-npm run discover
-```
+## Functioning Reports Endpoints
 
-## Dashboard Features
+All report endpoints below are integrated in the current frontend service layer.
 
-### Tenant Monitoring
+|Endpoint|Status|Primary use in this repo|
+|---|---|---|
+|`GET /v1/reports`|Functioning|List tenant report runs with paging and filtering|
+|`GET /v1/reports/{id}/url`|Functioning|Open signed PDF URL for analyst consumption|
+|`GET /v1/reports/{id}/binary`|Functioning|Retrieve base64 report payload for binary workflows|
+|`GET /v1/reports/{id}/json`|Functioning|Retrieve machine-readable JSON report payload|
 
-- View all protected clients
-- Monitor protection status
-- Track onboarding dates
-- Access SNAP agent installers
-- View tenant configurations
+Current report filtering options wired in the service:
 
-### System Status
+- `page`
+- `pageSize`
+- `sortBy=intervalStart`
+- `sortOrder`
+- `reportType` (`Cloud`, `Executive`, `MDR`)
+- `startDate`
+- `endDate`
 
-- Real-time connection status
-- Active notification tracking
-- Last update timestamps
-- Manual refresh capability
+Report run parsing also supports `VulnerabilityManagement` values when returned in API payloads.
 
-### Microsoft Defender XDR Correlation
+## XDR Closeout Governance
 
-- Tenant detail pages now include an `XDR Ownership` view
-- The view separates `Blackpoint MDR`, `Shared`, `Quisitive SecOps`, and `Customer IT` work
-- If a secure backend is available at `/api/defender-xdr/tenants/:id/summary`, the dashboard uses it
-- Without a backend, the dashboard falls back to deterministic mock Defender XDR data so the workflow can be exercised safely
+The tenant ownership panel now includes:
 
-To proxy a local backend during development, set:
+- Closeout reconciliation summary counters:
+- `CLOSED_BOTH`
+- `XDR_ACTIVE_BP_CLOSED`
+- `BP_ACTIVE_XDR_CLOSED`
+- unmatched counts for XDR and BP
+- CSV export with correlation method and confidence metadata
+- Analyst override actions:
+- Confirm Match
+- Mark No Match
+- Clear Override
 
-```powershell
-$env:DEFENDER_XDR_PROXY_TARGET = "http://localhost:7071"
-```
+## Role-Limited or Historically Unavailable Routes
 
-## API Endpoints
+Some routes may still be role-limited or unavailable depending on API key permissions and tenant configuration.
 
-### Available Endpoints
+- `/v1/incidents` can return 403 without role grant.
+- `/v1/users` can return 403 without role grant.
+- Historical 404 families include `/v1/alerts`, `/v1/tickets`, `/v1/cases`, and others.
 
-✅ **GET /v1/tenants** - List all tenants
-✅ **GET /v1/alert-groups** - List detections (open/resolved) with filtering
-✅ **GET /v1/alert-groups/count** - Detection counts
-✅ **GET /v1/alert-groups/alert-groups-by-week** - Weekly trends
-✅ **GET /v1/alert-groups/top-detections-by-entity** - Top entities
-✅ **GET /v1/alert-groups/top-detections-by-threat** - Top threats
-✅ **GET /v1/reports** - List native CompassOne reports
-✅ **GET /v1/reports/{id}/url** - Signed PDF URL for report
-✅ **GET /v1/reports/{id}/json** - Native report JSON payload
-✅ **GET /v1/notifications** - Get notifications
-
-### Role-Limited Or Unavailable
-
-❌ /v1/alerts (404)
-⚠️ /v1/incidents (403 unless API role grants access)
-❌ /v1/tenants/:id (404)
-❌ /v1/tenants/:id/alerts (404)
-
-See [API_LIMITATIONS.md](API_LIMITATIONS.md) for details.
+See [API_LIMITATIONS.md](API_LIMITATIONS.md) for the full compatibility matrix and request guidance.
 
 ## Project Structure
 
 ```text
 src/
-├── components/
-│   ├── TenantDashboard.tsx    # Modern SOC dashboard UI
-│   └── AlertDashboard.tsx    # Legacy alert dashboard
-├── services/
-│   ├── blackpoint-api.service.ts   # API client
-│   ├── tenant.service.ts           # Tenant operations
-│   ├── dashboard.service.ts        # Dashboard data
-│   └── lifecycle.service.ts        # Alert tracking
-├── types/
-│   └── blackpoint.types.ts    # TypeScript interfaces
-├── utils/
-│   ├── blackpoint.config.ts   # API configuration
-│   ├── rate-limiter.ts        # Rate limiting
-│   └── secure-logger.ts       # Secure logging
-└── examples/
-    ├── soc-workflow-complete.ts    # CLI example
-    └── dashboard-app.tsx           # React dashboard app
+  components/
+    Dashboard.tsx
+    DetectionReportingDashboard.tsx
+    TenantXdrOwnershipPanel.tsx
+  services/
+    blackpointReports.service.ts
+    defenderXdr.service.ts
+    closeoutGovernance.service.ts
+legacy/
+  services/
+    alert.service.ts
+  types/
+    blackpoint.types.ts
+  utils/
+    blackpoint.config.ts
 ```
 
-## Development
-
-**Build TypeScript:**
+## Development Scripts
 
 ```bash
 npm run build
-```
-
-**Watch Mode:**
-
-```bash
 npm run watch
-```
-
-**Type Check:**
-
-```bash
 npm run type-check
 ```
 
-## Security
+## Security Notes
 
-- API keys are never logged or exposed
-- Secure logger redacts sensitive information
-- Rate limiting prevents API abuse
-- Input sanitization on all user inputs
+- API keys are not logged.
+- Rate limiting and sanitization utilities are included.
+- Security documentation is maintained in repository markdown files.
 
-See [SECURITY_SUMMARY.md](SECURITY_SUMMARY.md) for details.
+See [SECURITY_SUMMARY.md](SECURITY_SUMMARY.md) and [SECURITY_REVIEW.md](SECURITY_REVIEW.md).
 
 ## License
 
