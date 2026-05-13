@@ -4,112 +4,176 @@ Date: 2026-05-13
 
 ## Executive Summary
 
-This enterprise proposal adopts the SecOps App Revised model as the target production pattern: Entra ID Application Proxy at the identity edge, private-only application hosting, strict Dev and Prod segregation, and ISO 27001:2022-aligned controls. The platform unifies Blackpoint API case operations, Defender XDR context, and AI-assisted triage in one operational surface, while preserving a reusable framework for future AI workload onboarding.
+The proposed SecOps platform integrates Spyglass MDR and SecOps services with the Blackpoint API and customer Microsoft Defender XDR tenants, replacing manual portal-checking with a unified case tracking, response, and AI-assisted triage surface. Delivery aligns with the SecOps App Revised model: Entra ID Application Proxy at the edge, private-only workload access, strict Dev and Prod separation, and ISO 27001:2022-aligned controls.
+
+### Business Value
+
+- API-driven case operations across Spyglass MDR and SecOps customers.
+- Single-pane analyst experience across Blackpoint and Defender XDR context.
+- Secure host for Copilot Studio and Cowork workflows for triage, response, evidence capture, and reporting.
+
+### Strategic Outcomes
+
+- Zero inbound public workload exposure through App Proxy connector outbound model.
+- Reusable AI production framework for near-zero marginal onboarding cost for future applications.
+- VRM service refinement through connector VM ownership, patching evidence, and SLA discipline.
+- Audit-ready telemetry posture via Defender for Cloud and centralized diagnostics forwarding.
+
+### Headline Economics
+
+| Metric | Value |
+| --- | --- |
+| One-time build (AI-accelerated) | $9,360 (120 hours) |
+| Recurring annual cost | $10,268/year |
+| Annual labor savings (baseline) | $36,864/year |
+| Payback period | ~4.2 months baseline |
+| Year-1 ROI | ~88% baseline |
+| Year-2+ ROI | ~259% baseline |
+
+### Executive Decision Points
+
+1. Confirm Spyglass VRM ownership for connector VM patching and evidence reporting.
+1. Confirm Quisitive IT readiness for Event Hub log forwarding from both environments.
+1. Approve POC port to App Service and Function Apps with production go-live window.
 
 ## Leadership Output Snapshot
 
 | Leadership Output | Enterprise Proposal Position |
 | --- | --- |
-| Business value | API-driven case workflows replacing portal-checking, single-pane analyst view, and AI-assisted triage and reporting |
-| Strategic outcomes | Zero inbound public exposure, reusable AI production framework, VRM-owned connector patching model, and audit-ready telemetry |
-| Headline economics | One-time build baseline: $9,360 (120 hours). Recurring annual baseline from revised guidance: $10,268/year before tenant-scale uplift |
-| Operational target | Maintain runtime below $5,000/month at 50-300 tenants via phased scale triggers and budget guardrails |
-| Decision points | VRM patch ownership, Event Hub forwarding to Quisitive IT, and go-live approval for POC port to App Service and Function Apps |
+| Business value | API-driven workflows, reduced swivel-chair operations, and AI-assisted triage/reporting |
+| Strategic outcomes | Zero public ingress, reusable AI framework, VRM service maturity, and audit evidence readiness |
+| Headline economics | Baseline build $9,360, recurring annual baseline $10,268, scalable labor-avoidance upside |
+| Operational target | Keep runtime below $5,000/month while scaling from 50 to 300 tenants |
+| Decision outputs | VRM ownership confirmation, Event Hub ingestion readiness, and production cutover approval |
 
-## Goals and Constraints
+## Design Overview
 
-- Tenants: 50 to 300.
-- Daily active users: 5,000 to 50,000.
-- Region: East US primary, single-region initial deployment with resilience controls.
-- Security posture: zero-trust identity edge, private endpoints, and ISO 27001:2022-aligned control mapping.
-- Budget target: remain below $5,000/month runtime through staged scale triggers.
+This design is security-first and identity-centric. User access is published through Entra ID Application Proxy with pre-authentication controls before traffic enters Azure networking. Application services are private-only, secrets are centralized, and all critical data-plane services are constrained by Private Endpoints.
 
-## SecOps Revised Architecture Alignment
+Key design properties:
 
-### Identity and Access Perimeter
+- No inbound public endpoint to the application tier.
+- Entra ID Conditional Access, MFA, and risk policies enforced at identity edge.
+- Strict Dev and Prod separation by subscription, VNet, connector groups, and enterprise apps.
+- Predictable outbound through hub NAT Gateway, with optional Firewall insertion point.
+- PaaS-first operating model with policy, logging, and compliance evidence from day one.
 
-- Entra ID Application Proxy is the front door for user access.
-- Pre-authentication, Conditional Access, MFA, and Identity Protection are enforced before requests reach Azure workloads.
-- No public inbound application surface is exposed.
+## High-Level Architecture
 
-### Network and Environment Topology
+### Logical Architecture Summary
 
-- Hub-spoke virtual network model with NAT Gateway egress.
-- Separate Dev and Prod subscriptions, VNets, connector groups, and Entra enterprise applications.
-- App Proxy connectors run on dedicated Windows Server VMs (B2ms class), outbound 443 only.
+- Identity Edge: Entra ID + App Proxy cloud service.
+- Hub Layer: NAT Gateway, private DNS zones, shared networking controls.
+- Spoke Layers: Dedicated Dev and Prod spokes with connector subnet and private workloads.
+- Workloads: App Service, Function Apps, SQL or PostgreSQL, Blob Storage, Key Vault.
+- Security and Monitoring: Defender for Cloud, Log Analytics, Application Insights, Event Hub forwarding.
 
-### Application and Integration Layer
+### Traffic Flow
 
-- App Service hosts the unified web platform.
-- Function Apps (Windows PowerShell and Linux Python) run integration and automation workloads.
-- Existing POC capabilities are ported to managed Azure runtime targets.
+1. User requests published URL behind App Proxy.
+1. Entra ID enforces authentication, Conditional Access, and risk policy checks.
+1. App Proxy relays authenticated traffic to available connector over connector outbound session.
+1. Connector forwards requests to App Service via Private Endpoint in spoke VNet.
+1. Application calls data and automation services via managed identity and private endpoints.
+1. Outbound traffic exits through hub NAT for predictable egress controls.
 
-### Data, Secrets, and Private Connectivity
+## Entra ID Application Proxy Design
 
-- Azure SQL or PostgreSQL for case and correlation data.
-- Blob Storage for evidence and reporting artifacts.
-- Key Vault with managed identity access.
-- Private Endpoints for App Service, database, Key Vault, and Storage.
+### Connectors
 
-### Monitoring, Security, and Audit
+- Windows Server 2022 connector hosts on B2ms baseline.
+- Production uses connector pair for high availability; Dev uses single connector baseline.
+- Connectors use outbound 443-only model with no inbound rule requirement.
+- Connector VM patching is owned by Spyglass VRM and managed through standard patch workflow.
 
-- Defender for Cloud enabled with CSPM Standard and workload protections.
-- Diagnostic Settings and Entra logs forwarded through Event Hub to Quisitive IT.
-- Central Log Analytics and Application Insights with retention and archive policy.
+### Published Applications
 
-## Multi-Tenancy Strategy
+- Separate applications per environment: Spyglass-Dev and Spyglass-Prod.
+- Pre-authentication set to Entra ID only.
+- Conditional Access includes MFA and compliant device baseline; Prod adds risk and location policies.
+- SSO method supports header or OIDC mode based on app implementation path.
 
-### Shared Tenant Model (Default)
+### App Service Hardening
 
-- Shared app tier with tenant_id partitioning and strict policy enforcement.
-- Unified case and triage views across customer tenants.
-- Least-privilege RBAC and tenant-scoped authorization checks in all API paths.
+- Public network access disabled.
+- Access via Private Endpoint and private DNS resolution only.
+- Access restrictions scoped to connector subnet as defense in depth.
+- HTTPS-only and TLS minimum enforced.
 
-### Isolated Tenant Model (Premium or Regulated)
+## Dev and Prod Environment Separation
 
-- Dedicated data tier for selected tenants (database and storage segmentation).
-- Optional dedicated compute pool for high-sensitivity workloads.
-- Same control plane and observability model to preserve operational consistency.
+| Layer | Dev | Prod |
+| --- | --- | --- |
+| Subscription | Dedicated Dev subscription | Dedicated Prod subscription |
+| VNet | Dev spoke VNet | Prod spoke VNet |
+| App Proxy app | Spyglass-Dev | Spyglass-Prod |
+| Connector group | Spyglass-Dev-Connectors | Spyglass-Prod-Connectors |
+| Connector count | 1 | 2 |
+| Access controls | MFA + compliant device | MFA + compliant device + risk and location gating |
+| Key Vault mode | Private endpoint + RBAC | Private endpoint + RBAC + purge protection |
+| Deployment controls | Automated Dev deploys | Approval gate and change control required |
 
-## Recommended Enterprise Resources
+## Security Best Practices Applied
 
-| Layer | Azure Service | Enterprise Baseline | Scale Guidance |
-| --- | --- | --- | --- |
-| Identity edge | Entra ID App Proxy | 2 Prod connectors + 1 Dev connector | Add connector pair per significant concurrency growth |
-| Hub network | Hub VNet + NAT Gateway + Private DNS | Shared egress and private resolution | Introduce Azure Firewall Basic if FQDN egress controls are required |
-| Web and API | App Service Plan Linux | P1v3, 2 instances | Scale to 4-8 instances by CPU and p95 latency |
-| Automation | Function Apps (Windows + Linux) | Consumption baseline | Move heavy jobs to Premium plans as execution pressure grows |
-| Structured data | PostgreSQL Flexible Server or Azure SQL | General Purpose / S-tier baseline | Scale vCores and IOPS at sustained >60% utilization |
-| Unstructured data | Blob Storage | Hot + lifecycle to Cool/Archive | Add immutable policies for audit containers |
-| Secrets | Key Vault | RBAC mode + private endpoint | Enforce purge protection in Prod |
-| Security posture | Defender for Cloud | CSPM + workload protections | Keep parity between Dev and Prod allocations |
-| Telemetry | App Insights + Log Analytics + Event Hub | Centralized diagnostics forwarding | Increase retention and archive periods for compliance demand |
+- Entra ID-only authentication with no local or shared credential model.
+- Managed identity for App Service and Function Apps.
+- Private Endpoints for app, database, storage, and secrets plane.
+- Defender for Cloud CSPM plus workload protections in both environments.
+- Diagnostic Settings on resources plus Entra logs forwarded through Event Hub.
+- Azure Policy initiative for private access, TLS, tagging, and security posture controls.
+- Backup and recovery controls for database, app artifacts, and key recovery.
 
-## Enterprise Delivery Model (SecOps Revised)
+## ISO 27001:2022 Control Mapping
 
-1. Platform foundation: create repository structure, environment gates, and policy baseline.
-1. AI-assisted IaC and policy authoring: generate, review, and harden Bicep or Terraform plus Azure Policy initiative.
-1. Hub-spoke deployment: establish hub networking, spoke VNets, peering, UDRs, NAT, and Private DNS.
-1. Data and secret plane: deploy database, storage, Key Vault, and Private Endpoints with public access disabled.
-1. App Proxy deployment: provision connector VMs, install connectors, and bind environment-specific connector groups.
-1. Entra publish and access controls: configure App Proxy enterprise applications, Conditional Access, and risk policies.
-1. Workload deployment: deploy App Service and Function Apps; port POC logic to managed runtime.
-1. Observability and governance: enable Defender plans, Diagnostic Settings, Event Hub forwarding, and alerting.
-1. CI and CD hardening: enforce Dev auto-deploy, Prod approval gates, and smoke testing.
-1. Readiness and cutover: perform tabletop security tests, failover tests, and go-live approval.
+| Control | Title | Architecture Contribution |
+| --- | --- | --- |
+| A.5.15 | Access control | Entra ID groups, App assignments, RBAC boundaries |
+| A.5.17 | Authentication information | MFA and Conditional Access enforced at edge |
+| A.8.5 | Secure authentication | Entra pre-auth through App Proxy, legacy auth blocked |
+| A.8.9 | Configuration management | IaC plus Azure Policy initiative controls |
+| A.8.15 | Logging | Central diagnostics to Log Analytics and Event Hub |
+| A.8.16 | Monitoring activities | Defender alerts plus monitor alerting and forwarding |
+| A.8.20 | Network security | Hub-spoke segmentation, NSGs, private DNS, no public ingress |
+| A.8.22 | Segregation of networks | Separate Dev and Prod subscriptions, VNets, and connector groups |
+| A.8.31 | Separation of environments | Distinct environments, identities, and deployment gates |
 
-## Leadership Economics View
+## Monthly Cost Estimate
 
-### Baseline Financial Outputs from SecOps Revised Guidance
+Assumptions:
 
-| Metric | Baseline Value |
+- East US pricing model.
+- 730-hour month equivalent.
+- List pricing estimate without reservation or negotiated discounts.
+
+### Production Baseline Estimate
+
+| Component Group | Monthly Cost |
 | --- | --- |
-| One-time build | $9,360 |
-| Recurring annual cost | $10,268/year |
-| Annual labor savings (current load) | $36,864/year |
-| Payback period | ~4.2 months baseline |
-| Year-1 ROI | ~88% baseline |
-| Year-2+ ROI | ~259% baseline |
+| App, functions, and data baseline | $119 |
+| Security, logs, and monitoring | $114 |
+| Network and private connectivity | $64 |
+| App Proxy connectors (2x B2ms) | $120 |
+| Event Hub forwarding | $15 |
+| Production subtotal | $441 |
+
+### Dev Baseline Estimate
+
+| Component Group | Monthly Cost |
+| --- | --- |
+| App, functions, and data baseline | $63 |
+| Security, logs, and monitoring | $77 |
+| Network and private connectivity | $29 |
+| App Proxy connector (1x B2ms) | $60 |
+| Event Hub forwarding | $11 |
+| Dev subtotal | $248 |
+
+### Combined Baseline
+
+| Metric | Value |
+| --- | --- |
+| Combined monthly run-rate (Dev + Prod) | $689/month |
+| Combined annual Azure consumption | $8,268/year |
+| Recurring annual operating model (with maintenance) | $10,268/year |
 
 ### Enterprise Runtime Envelope (50-300 Tenants)
 
@@ -119,45 +183,94 @@ This enterprise proposal adopts the SecOps App Revised model as the target produ
 | Target | 150 | 20,000 | $3,250 |
 | Upper Growth | 300 | 50,000 | $4,900 |
 
-| Category | Low | Target | Upper Growth |
+## ROI Analysis
+
+### One-Time Build Cost
+
+| Build Resource | Effort | Loaded Rate | Cost |
 | --- | --- | --- | --- |
-| Entra App Proxy connectors and edge controls | $210 | $360 | $520 |
-| App Service and Functions | $430 | $1,150 | $1,780 |
-| Database and storage | $210 | $620 | $960 |
-| Security and telemetry (Defender, Logs, Event Hub) | $330 | $760 | $1,140 |
-| Network and platform overhead | $270 | $360 | $500 |
-| Total | $1,450 | $3,250 | $4,900 |
+| India global delivery team | ~70 hours | $48/hour | $3,360 |
+| Onshore security SMEs | ~30 hours | $120/hour | $3,600 |
+| Program management | ~20 hours | $120/hour | $2,400 |
+| One-time build total | 120 hours | Blended | $9,360 |
 
-## Governance, Security, and ISO Alignment
+### Recurring Annual Cost
 
-- Entra ID-only authentication with Conditional Access and MFA.
-- No public inbound application access; connector outbound 443 model.
-- Managed identities and Key Vault for secret hygiene.
-- Private endpoint access for all critical data plane services.
-- Defender CSPM and workload protections enabled in both environments.
-- Diagnostic forwarding to Quisitive IT for centralized monitoring.
-- Direct support for ISO-aligned controls including access control, secure authentication, logging, monitoring, network segregation, and Dev/Prod separation.
+| Recurring Component | Annual Cost |
+| --- | --- |
+| Azure consumption (Dev + Prod) | $8,268/year |
+| Entra ID P2 incremental | $0/year (already licensed) |
+| Maintenance and tuning | $2,000/year |
+| Recurring total | $10,268/year |
 
-## Decision Points for Leadership Approval
+### Labor Savings (Time Avoidance)
 
-1. Confirm Spyglass VRM team ownership of App Proxy connector VM patching and evidence reporting.
-1. Confirm Quisitive IT Event Hub integration readiness for Dev and Prod telemetry.
-1. Approve POC migration timeline to App Service and Function Apps with production go-live window.
+| Scenario | Annual Savings |
+| --- | --- |
+| Current load baseline | $36,864/year |
+| +1 additional customer | $46,080/year equivalent uplift trajectory |
+| +3 additional customers | $64,512/year equivalent uplift trajectory |
+| +5 additional customers | $82,944/year |
+
+### ROI Summary
+
+| Metric | Current Load | +5 Customers |
+| --- | --- | --- |
+| Annual labor savings | $36,864 | $82,944 |
+| Annual recurring cost | $10,268 | $10,268 |
+| Annual net benefit | $26,596 | $72,676 |
+| Payback period | ~4.2 months | ~1.5 months |
+| Year-1 ROI | ~88% | ~323% |
+| Year-2+ ROI | ~259% | ~708% |
+
+### Strategic Value: AI Production Framework
+
+The platform is the first workload on a reusable security and operations framework. Future applications inherit identity perimeter, private networking, centralized secrets, policy controls, and audit telemetry without rebuilding those capabilities. This reduces marginal per-application cost and accelerates secure promotion from POC to production.
+
+### Strategic Value: VRM Service Refinement
+
+Making VRM the connector patch owner creates a compounding benefit: the platform receives enterprise patch governance while VRM gains internal production workloads to harden automation, SLA evidence, and change procedures before broader customer rollout.
+
+## Implementation Steps
+
+1. Stand up repository controls, branch protection, and environment approval gates.
+1. Draft IaC and policy artifacts with AI assistance, then complete SME hardening review.
+1. Deploy management and network baseline (hub, spokes, NAT, private DNS, UDRs).
+1. Deploy data and secret plane with private access and public network disabled.
+1. Deploy App Service and Function Apps with managed identity integration.
+1. Provision connector VMs, register connector groups, and hand patching ownership to VRM.
+1. Configure App Proxy enterprise apps and Conditional Access policies by environment.
+1. Enable Defender plans, diagnostics, and Event Hub forwarding to Quisitive IT.
+1. Port existing POC runtime dependencies to managed Azure service targets.
+1. Enforce CI and CD promotion controls and run readiness exercises before go-live.
+
+## Risks and Next Steps
+
+- Entra ID and App Proxy dependency: include this in BCP and continuity planning.
+- Connector patch ownership transition: finalize VRM service catalog and SLA commitments.
+- Telemetry forwarding coordination: validate ingestion and alert routing with Quisitive IT before production cutover.
+- Cost drift risk: monitor ingestion and workload growth against budget guardrails monthly.
+
+Next actions:
+
+1. Confirm the three executive decision points.
+1. Freeze implementation wave plan and named owners.
+1. Begin phased implementation and readiness testing timeline.
 
 ## Scope Boundaries
 
 ### Included
 
-- SecOps revised architecture alignment for identity edge, private networking, and telemetry.
-- Enterprise delivery sequence and operating model.
-- Leadership-oriented output package: economics, ROI baseline, and decision points.
+- SecOps Revised architecture alignment for identity edge, private networking, and telemetry governance.
+- Full leadership-context narrative for design, cost, ROI, controls, implementation, and risk.
+- Enterprise operating model for 50-300 tenant trajectory.
 
 ### Excluded
 
-- Full implementation code and IaC module artifacts.
-- Multi-region active-active disaster recovery build-out.
-- Final production runbooks and incident playbooks.
+- Detailed IaC module code and deployment pipeline implementation artifacts.
+- Full active-active multi-region disaster recovery build-out in phase one.
+- Final production incident response playbooks and detailed runbook procedures.
 
 ## Final Recommendation
 
-Proceed with the SecOps Revised architecture as the enterprise target state: Entra App Proxy identity edge, private-only service connectivity, strict Dev and Prod segregation, and reusable AI production framework controls. This delivers the leadership outputs requested while preserving a practical cost envelope for 50-300 tenant growth.
+Proceed with the SecOps Revised enterprise architecture as the target state. This delivers full executive context for deployment design, security controls, operational governance, and quantifiable cost savings while maintaining a practical runtime envelope through tenant growth.

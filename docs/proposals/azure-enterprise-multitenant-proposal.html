@@ -31,7 +31,7 @@
     }
 
     .wrap {
-      max-width: 1220px;
+      max-width: 1240px;
       margin: 0 auto;
       padding: 24px;
     }
@@ -101,6 +101,12 @@
       gap: 14px;
     }
 
+    .cards3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
     .card {
       border: 1px solid var(--line);
       border-radius: 12px;
@@ -163,6 +169,7 @@
     @media (max-width: 980px) {
       .split,
       .cards,
+      .cards3,
       .chart-grid {
         grid-template-columns: 1fr;
       }
@@ -182,6 +189,7 @@
         <span class="tag">SecOps App Revised Alignment</span>
         <span class="tag">Entra ID App Proxy</span>
         <span class="tag">Zero Inbound Public Surface</span>
+        <span class="tag">ISO 27001:2022 Aligned</span>
         <span class="tag">Leadership Economics and Decision Pack</span>
       </div>
     </header>
@@ -189,71 +197,82 @@
     <section class="section">
       <h2>Executive Summary</h2>
       <p>
-        This enterprise proposal aligns delivery and architecture with the SecOps App Revised guidance: Entra ID Application Proxy at the edge,
-        private-only workload access, strict Dev and Prod segregation, and ISO 27001:2022-oriented controls from day one.
+        The enterprise model integrates Spyglass MDR and SecOps services with Blackpoint API and customer Defender XDR tenants,
+        replacing manual portal-hopping with a unified case, response, and AI-assisted triage surface. The platform is published
+        through Entra ID Application Proxy, privately hosted in Azure, and structured for repeatable AI productionization.
       </p>
-      <ul>
-        <li>Unifies Blackpoint API operations, Defender XDR context, and AI-assisted triage into one operational platform.</li>
-        <li>Eliminates manual portal-swivel workflows with API-driven case orchestration.</li>
-        <li>Creates a reusable framework for future AI workload productionization at low marginal cost.</li>
-      </ul>
     </section>
 
     <section class="section">
-      <h2>Leadership Output Snapshot</h2>
+      <h2>Business Value and Strategic Outcomes</h2>
+      <div class="cards">
+        <div class="card">
+          <h3>Business Value</h3>
+          <ul>
+            <li>API-driven case workflows replacing manual portal-checking.</li>
+            <li>Single-pane analyst workflow across Blackpoint and Defender XDR context.</li>
+            <li>AI-assisted triage, evidence collection, and customer reporting.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Strategic Outcomes</h3>
+          <ul>
+            <li>Zero inbound public exposure using connector outbound model.</li>
+            <li>Reusable AI production framework for low marginal onboarding cost.</li>
+            <li>VRM-owned connector patching and stronger internal service maturity.</li>
+            <li>Audit-ready telemetry path through Defender, logs, and Event Hub forwarding.</li>
+          </ul>
+        </div>
+      </div>
+
       <table>
         <thead>
           <tr>
             <th>Leadership Output</th>
-            <th>Enterprise Proposal Position</th>
+            <th>Enterprise Position</th>
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td>Business value</td>
-            <td>API-driven case workflows, single-pane operations, and AI-assisted response/reporting.</td>
-          </tr>
-          <tr>
-            <td>Strategic outcomes</td>
-            <td>Zero inbound public exposure, reusable AI framework, VRM patch ownership model, and audit-ready telemetry.</td>
-          </tr>
-          <tr>
-            <td>Headline economics</td>
-            <td>Baseline one-time build $9,360, recurring annual baseline $10,268, with scalable labor-avoidance upside.</td>
-          </tr>
-          <tr>
-            <td>Decision outputs</td>
-            <td>VRM ownership confirmation, Event Hub forwarding readiness, and production go-live approval.</td>
-          </tr>
+          <tr><td>Business value</td><td>Unified API operations, reduced analyst context switching, AI-assisted response acceleration.</td></tr>
+          <tr><td>Strategic outcomes</td><td>Private-by-default architecture, reusable AI framework, and operational governance maturity.</td></tr>
+          <tr><td>Headline economics</td><td>One-time build $9,360; recurring annual baseline $10,268; scalable labor-avoidance upside.</td></tr>
+          <tr><td>Decision outputs</td><td>VRM ownership confirmation, Quisitive IT log-ingestion readiness, and production cutover approval.</td></tr>
         </tbody>
       </table>
     </section>
 
     <section class="section">
-      <h2>SecOps Revised Architecture Alignment</h2>
+      <h2>Design Overview</h2>
+      <ul>
+        <li>Pre-authentication and Conditional Access are enforced at the Entra ID edge.</li>
+        <li>App and data services run behind private networking and private DNS resolution.</li>
+        <li>Dev and Prod are segregated across subscriptions, VNets, connector groups, and enterprise apps.</li>
+        <li>PaaS-first architecture is instrumented for policy, monitoring, and compliance evidence from day one.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>High-Level Architecture</h2>
       <div class="split">
         <div>
-          <h3>Identity and Network Pattern</h3>
+          <h3>Logical Architecture Summary</h3>
           <ul>
-            <li>Entra ID App Proxy pre-auth, Conditional Access, MFA, and risk policies before workload access.</li>
-            <li>Hub-spoke topology with NAT Gateway egress and private DNS for private endpoint resolution.</li>
-            <li>Dev and Prod separated by subscription, VNet, connector groups, and Entra app registrations.</li>
+            <li>Identity Edge: Entra ID with App Proxy cloud service.</li>
+            <li>Hub Layer: NAT Gateway and private DNS.</li>
+            <li>Spoke Layers: separate Dev and Prod connectors and private workloads.</li>
+            <li>Workloads: App Service, Function Apps, SQL or PostgreSQL, Blob Storage, Key Vault.</li>
+            <li>Security and Monitoring: Defender for Cloud, App Insights, Log Analytics, Event Hub forwarding.</li>
           </ul>
 
-          <h3>Application and Data</h3>
-          <ul>
-            <li>App Service web tier plus Function Apps for automation pipelines.</li>
-            <li>PostgreSQL or Azure SQL for case state and governance records.</li>
-            <li>Blob Storage for evidence, exports, and immutable audit artifacts.</li>
-            <li>Managed identity plus Key Vault plus private endpoints on all critical data plane paths.</li>
-          </ul>
-
-          <h3>Security and Monitoring</h3>
-          <ul>
-            <li>Defender for Cloud CSPM and workload protections enabled in Dev and Prod.</li>
-            <li>Diagnostic Settings and Entra logs forwarded to Quisitive IT via Event Hub.</li>
-            <li>ISO-aligned controls on access, logging, monitoring, network segregation, and Dev and Prod separation.</li>
-          </ul>
+          <h3>Traffic Flow</h3>
+          <ol>
+            <li>User request lands on App Proxy published endpoint.</li>
+            <li>Entra ID evaluates authentication and Conditional Access policy gates.</li>
+            <li>App Proxy relays authenticated requests to available connector over outbound session.</li>
+            <li>Connector forwards to App Service through Private Endpoint.</li>
+            <li>Application calls data and secret services with managed identities and private connectivity.</li>
+            <li>Outbound traffic exits through hub NAT for controlled egress.</li>
+          </ol>
         </div>
 
         <div class="card">
@@ -297,9 +316,90 @@
             <line x1="570" y1="294" x2="410" y2="346" stroke="#3d5c95" stroke-width="2" marker-end="url(#arrow)"></line>
             <line x1="570" y1="294" x2="630" y2="346" stroke="#3d5c95" stroke-width="2" marker-end="url(#arrow)"></line>
           </svg>
-          <p class="small">Zero inbound app exposure, outbound connector model, private endpoints, and centralized telemetry forwarding.</p>
         </div>
       </div>
+    </section>
+
+    <section class="section">
+      <h2>Entra ID Application Proxy Design</h2>
+      <div class="cards3">
+        <div class="card">
+          <h3>Connectors</h3>
+          <ul>
+            <li>Windows Server connectors on B2ms baseline.</li>
+            <li>2 connectors in Prod and 1 connector in Dev baseline.</li>
+            <li>Outbound 443-only transport model.</li>
+            <li>VRM ownership for patch and compliance evidence.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Published Apps</h3>
+          <ul>
+            <li>Dedicated App Proxy apps for Dev and Prod.</li>
+            <li>Pre-authentication set to Entra ID only.</li>
+            <li>Conditional Access baseline with MFA and compliant device controls.</li>
+            <li>Prod can enforce risk and location policy constraints.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>App Hardening</h3>
+          <ul>
+            <li>Public access disabled with Private Endpoint-only app reachability.</li>
+            <li>Subnet-based access restrictions for defense in depth.</li>
+            <li>TLS minimum and HTTPS-only policy enforcement.</li>
+            <li>Managed identity to data and secrets plane.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Dev and Prod Environment Separation</h2>
+      <table>
+        <thead>
+          <tr><th>Layer</th><th>Dev</th><th>Prod</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Subscription</td><td>Dedicated Dev subscription</td><td>Dedicated Prod subscription</td></tr>
+          <tr><td>VNet</td><td>Dev spoke VNet</td><td>Prod spoke VNet</td></tr>
+          <tr><td>App Proxy app</td><td>Spyglass-Dev</td><td>Spyglass-Prod</td></tr>
+          <tr><td>Connector group</td><td>Dev connectors</td><td>Prod connectors</td></tr>
+          <tr><td>Connector baseline</td><td>1 connector</td><td>2 connectors</td></tr>
+          <tr><td>Access controls</td><td>MFA + compliant device</td><td>MFA + compliant device + risk and location policies</td></tr>
+          <tr><td>Release controls</td><td>Automated Dev promotion</td><td>Approval and change record gating</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>Security Best Practices Applied</h2>
+      <ul>
+        <li>Entra ID-only authentication model with no local account dependency.</li>
+        <li>Managed identity for app runtimes and key service calls.</li>
+        <li>Private Endpoint connectivity for app, database, storage, and Key Vault.</li>
+        <li>Defender for Cloud CSPM and workload protections on both environments.</li>
+        <li>Diagnostic Settings and Entra logs forwarded through Event Hub to Quisitive IT.</li>
+        <li>Azure Policy controls for private access, TLS baseline, tagging, and security posture.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>ISO 27001:2022 Control Mapping</h2>
+      <table>
+        <thead>
+          <tr><th>Control</th><th>Title</th><th>Architecture Contribution</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>A.5.15</td><td>Access control</td><td>Entra groups, RBAC boundaries, and app assignments</td></tr>
+          <tr><td>A.5.17</td><td>Authentication information</td><td>MFA and Conditional Access gates before app reachability</td></tr>
+          <tr><td>A.8.5</td><td>Secure authentication</td><td>Entra pre-auth with passthrough disabled</td></tr>
+          <tr><td>A.8.9</td><td>Configuration management</td><td>IaC plus Azure Policy initiative enforcement</td></tr>
+          <tr><td>A.8.15</td><td>Logging</td><td>Central diagnostics forwarding to analytics and Event Hub</td></tr>
+          <tr><td>A.8.16</td><td>Monitoring activities</td><td>Defender alerts and monitor rules with centralized review</td></tr>
+          <tr><td>A.8.20</td><td>Network security</td><td>Hub-spoke segmentation, NSGs, private DNS, no public ingress</td></tr>
+          <tr><td>A.8.31</td><td>Separation of environments</td><td>Separate Dev and Prod subscriptions, VNets, apps, and release gates</td></tr>
+        </tbody>
+      </table>
     </section>
 
     <section class="section">
@@ -315,7 +415,7 @@
         </thead>
         <tbody>
           <tr><td>Identity edge</td><td>Entra App Proxy</td><td>2 Prod connectors + 1 Dev connector</td><td>Add connector pair for concurrency growth</td></tr>
-          <tr><td>Hub network</td><td>Hub VNet + NAT + Private DNS</td><td>Shared egress and resolution plane</td><td>Add Azure Firewall Basic if FQDN egress controls are required</td></tr>
+          <tr><td>Hub network</td><td>Hub VNet + NAT + Private DNS</td><td>Shared egress and resolution plane</td><td>Add Azure Firewall Basic for FQDN egress controls when needed</td></tr>
           <tr><td>Web and API</td><td>App Service Plan Linux</td><td>P1v3, 2 instances</td><td>Scale to 4-8 instances by CPU and p95 latency</td></tr>
           <tr><td>Automation</td><td>Function Apps (Windows + Linux)</td><td>Consumption baseline</td><td>Move to Premium for sustained execution demand</td></tr>
           <tr><td>Data</td><td>PostgreSQL or Azure SQL + Blob</td><td>General Purpose baseline</td><td>Scale vCores, IOPS, and retention tiers with usage</td></tr>
@@ -323,6 +423,48 @@
           <tr><td>Telemetry</td><td>App Insights + Log Analytics + Event Hub</td><td>Centralized logs and forwarding</td><td>Increase retention and archive with compliance needs</td></tr>
         </tbody>
       </table>
+    </section>
+
+    <section class="section">
+      <h2>Monthly Cost Estimate</h2>
+      <div class="cards">
+        <div class="card">
+          <h3>Production Baseline</h3>
+          <table>
+            <tbody>
+              <tr><th>App, functions, data</th><td>$119</td></tr>
+              <tr><th>Security and monitoring</th><td>$114</td></tr>
+              <tr><th>Network and private connectivity</th><td>$64</td></tr>
+              <tr><th>App Proxy connectors</th><td>$120</td></tr>
+              <tr><th>Event Hub forwarding</th><td>$15</td></tr>
+              <tr><th>Production subtotal</th><td>$441/month</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h3>Dev and Combined</h3>
+          <table>
+            <tbody>
+              <tr><th>Dev subtotal</th><td>$248/month</td></tr>
+              <tr><th>Combined monthly baseline</th><td>$689/month</td></tr>
+              <tr><th>Combined annual Azure consumption</th><td>$8,268/year</td></tr>
+              <tr><th>Recurring annual model (with maintenance)</th><td>$10,268/year</td></tr>
+            </tbody>
+          </table>
+
+          <h3>Runtime Envelope</h3>
+          <table>
+            <thead>
+              <tr><th>Scenario</th><th>Tenants</th><th>DAU</th><th>Monthly Runtime</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Low</td><td>50</td><td>5,000</td><td>$1,450</td></tr>
+              <tr><td>Target</td><td>150</td><td>20,000</td><td>$3,250</td></tr>
+              <tr><td>Upper Growth</td><td>300</td><td>50,000</td><td>$4,900</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
     <section class="section">
@@ -379,46 +521,75 @@
     </section>
 
     <section class="section">
-      <h2>Leadership Economics View</h2>
+      <h2>ROI Analysis</h2>
       <div class="cards">
         <div class="card">
-          <h3>Baseline Financial Outputs</h3>
+          <h3>Build and Recurring Cost</h3>
           <table>
             <tbody>
               <tr><th>One-time build</th><td>$9,360</td></tr>
               <tr><th>Recurring annual baseline</th><td>$10,268</td></tr>
-              <tr><th>Annual labor savings baseline</th><td>$36,864</td></tr>
+              <tr><th>Baseline annual labor savings</th><td>$36,864</td></tr>
               <tr><th>Payback period</th><td>~4.2 months</td></tr>
-              <tr><th>Year-1 ROI</th><td>~88%</td></tr>
-              <tr><th>Year-2+ ROI</th><td>~259%</td></tr>
             </tbody>
           </table>
-        </div>
-        <div class="card">
-          <h3>Enterprise Runtime Envelope</h3>
+
+          <h3>ROI Summary</h3>
           <table>
             <thead>
-              <tr><th>Scenario</th><th>Tenants</th><th>DAU</th><th>Monthly Runtime</th></tr>
+              <tr><th>Metric</th><th>Current Load</th><th>+5 Customers</th></tr>
             </thead>
             <tbody>
-              <tr><td>Low</td><td>50</td><td>5,000</td><td>$1,450</td></tr>
-              <tr><td>Target</td><td>150</td><td>20,000</td><td>$3,250</td></tr>
-              <tr><td>Upper Growth</td><td>300</td><td>50,000</td><td>$4,900</td></tr>
+              <tr><td>Annual net benefit</td><td>$26,596</td><td>$72,676</td></tr>
+              <tr><td>Year-1 ROI</td><td>~88%</td><td>~323%</td></tr>
+              <tr><td>Year-2+ ROI</td><td>~259%</td><td>~708%</td></tr>
             </tbody>
           </table>
         </div>
-      </div>
+        <div class="card">
+          <h3>Strategic Value</h3>
+          <ul>
+            <li><strong>AI Production Framework:</strong> future applications inherit identity, private networking, policy, and telemetry controls without rework.</li>
+            <li><strong>VRM Service Refinement:</strong> internal production patch ownership improves automation maturity and audit evidence quality.</li>
+            <li><strong>Scale Economics:</strong> recurring infrastructure remains stable while labor avoidance scales with customer growth.</li>
+          </ul>
 
-      <div class="chart-grid">
-        <div class="card">
-          <h3>Chart 1: Runtime by Growth Scenario</h3>
-          <canvas id="runtimeChart"></canvas>
-        </div>
-        <div class="card">
-          <h3>Chart 2: ROI Baseline vs Expansion</h3>
-          <canvas id="roiChart"></canvas>
+          <div class="chart-grid">
+            <div>
+              <h3>Runtime by Scenario</h3>
+              <canvas id="runtimeChart"></canvas>
+            </div>
+            <div>
+              <h3>ROI Baseline vs Expansion</h3>
+              <canvas id="roiChart"></canvas>
+            </div>
+          </div>
         </div>
       </div>
+    </section>
+
+    <section class="section">
+      <h2>Implementation Steps</h2>
+      <ol>
+        <li>Establish branch protection, environment approvals, and repository governance.</li>
+        <li>Draft IaC and Azure Policy with AI assistance, then complete SME hardening.</li>
+        <li>Deploy hub, spokes, private DNS, NAT, and private data-plane resources.</li>
+        <li>Deploy App Service, Function Apps, and managed identity integrations.</li>
+        <li>Provision connectors and configure App Proxy applications by environment.</li>
+        <li>Enable Defender, centralized diagnostics, and Event Hub forwarding.</li>
+        <li>Port POC capabilities and execute validation, failover, and readiness tests.</li>
+      </ol>
+    </section>
+
+    <section class="section">
+      <h2>Risks and Next Steps</h2>
+      <ul>
+        <li>Entra ID and App Proxy dependency should be represented in continuity plans.</li>
+        <li>VRM ownership transfer must include SLA, maintenance window, and evidence workflow.</li>
+        <li>Event Hub ingestion and alert routing with Quisitive IT requires pre-cutover validation.</li>
+        <li>Monthly cost variance should be monitored for telemetry and workload growth drift.</li>
+      </ul>
+      <p class="small">Next actions: confirm decision points, approve timeline, and initiate phased implementation.</p>
     </section>
 
     <section class="section">
@@ -434,8 +605,8 @@
       <h2>Final Recommendation</h2>
       <p>
         Approve this enterprise plan as the target operating model: Entra App Proxy identity edge, private-only workload access,
-        policy-first delivery, and leadership-ready economics tracking. This aligns execution with the SecOps Revised guidance
-        while preserving the original tenant-scale budget objective.
+        policy-first delivery, and leadership-ready economics tracking. This aligns execution with the SecOps Revised guidance while
+        preserving a practical cost envelope for growth across 50-300 tenants.
       </p>
     </section>
   </div>
@@ -459,7 +630,7 @@
 
     function drawRuntimeChart() {
       const canvas = document.getElementById("runtimeChart");
-      const { ctx, width, height } = setupCanvas(canvas, 330);
+      const { ctx, width, height } = setupCanvas(canvas, 300);
       const pad = { left: 62, right: 20, top: 30, bottom: 52 };
       const chartW = width - pad.left - pad.right;
       const chartH = height - pad.top - pad.bottom;
@@ -497,15 +668,11 @@
         ctx.fillStyle = "#1f2d46";
         ctx.fillText(labels[i], x, height - 18);
       });
-
-      ctx.fillStyle = "#213a64";
-      ctx.font = "600 13px Segoe UI";
-      ctx.fillText("Monthly Runtime Cost by Scenario", pad.left, 18);
     }
 
     function drawRoiChart() {
       const canvas = document.getElementById("roiChart");
-      const { ctx, width, height } = setupCanvas(canvas, 330);
+      const { ctx, width, height } = setupCanvas(canvas, 300);
       const pad = { left: 56, right: 16, top: 36, bottom: 48 };
       const chartW = width - pad.left - pad.right;
       const chartH = height - pad.top - pad.bottom;
@@ -567,21 +734,6 @@
         ctx.fillStyle = "#1f2e48";
         ctx.fillText(lab, x - 18, height - 16);
       });
-
-      ctx.fillStyle = "#213a64";
-      ctx.font = "600 13px Segoe UI";
-      ctx.fillText("ROI Trajectory", pad.left, 18);
-
-      ctx.fillStyle = "#0a5bd8";
-      ctx.fillRect(width - 180, 20, 14, 8);
-      ctx.fillStyle = "#324669";
-      ctx.font = "12px Segoe UI";
-      ctx.fillText("Baseline", width - 160, 28);
-
-      ctx.fillStyle = "#c57f00";
-      ctx.fillRect(width - 180, 38, 14, 8);
-      ctx.fillStyle = "#324669";
-      ctx.fillText("+5 Customer Expansion", width - 160, 46);
     }
 
     function renderCharts() {
