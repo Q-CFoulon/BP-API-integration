@@ -8,6 +8,8 @@ This document outlines the discovered limitations and available endpoints of the
 
 Last tested: **March 20, 2026** — comprehensive probe of 83 endpoints + full OpenAPI spec analysis from `compassone-api.json` v1.4.0
 
+> May 2026 update: CompassOne OpenAPI v1.7.0 confirms detections and native reporting capabilities including `/v1/reports`, `/v1/reports/{id}/url`, `/v1/reports/{id}/binary`, and `/v1/reports/{id}/json`. Historical 404 notes in this file should be treated as superseded where they conflict with v1.7.0.
+
 ## API Base URL
 
 ```text

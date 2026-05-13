@@ -17,6 +17,23 @@ export type WorkflowOwner =
 
 export type BlackpointCoverage = 'covered' | 'partial' | 'gap';
 
+export type CorrelationConfidence =
+  | 'high'
+  | 'medium'
+  | 'low'
+  | 'analyst-confirmed';
+
+export type CorrelationOverrideAction = 'match' | 'no-match';
+
+export interface CorrelationOverride {
+  incidentId: string;
+  action: CorrelationOverrideAction;
+  groupId?: string;
+  updatedAt: string;
+}
+
+export type CorrelationOverrideMap = Record<string, CorrelationOverride>;
+
 export interface TenantLike {
   id: string;
   name: string;
@@ -37,6 +54,7 @@ export interface BlackpointGroupLike {
 
 export interface DefenderIncident {
   id: string;
+  incidentNumber?: string | number;
   title: string;
   serviceSource: DefenderServiceSource;
   category: string;
@@ -57,11 +75,16 @@ export interface DefenderTenantSnapshot {
 
 export interface DefenderWorkItem {
   incident: DefenderIncident;
+  xdrIncidentRef: string;
   owner: WorkflowOwner;
   blackpointCoverage: BlackpointCoverage;
   rationale: string;
   correlatedGroupId?: string;
   correlatedTicketId?: string;
+  correlationScore?: number;
+  correlationConfidence?: CorrelationConfidence;
+  overrideApplied?: boolean;
+  overrideAction?: CorrelationOverrideAction;
 }
 
 export interface BlackpointManagedDetection {
@@ -84,11 +107,21 @@ export interface OwnershipSummary {
   correlatedItems: number;
 }
 
+export interface CloseoutReconciliationSummary {
+  bpResolvedAndXdrResolved: number;
+  bpResolvedXdrActive: number;
+  bpOpenXdrResolved: number;
+  bpOpenXdrActive: number;
+  unmatchedXdr: number;
+  unmatchedBp: number;
+}
+
 export interface TenantOwnershipView {
   snapshot: DefenderTenantSnapshot;
   blackpointDetections: BlackpointManagedDetection[];
   workItems: DefenderWorkItem[];
   summary: OwnershipSummary;
+  closeout: CloseoutReconciliationSummary;
   recommendations: string[];
 }
 
@@ -107,7 +140,7 @@ function keywordOverlap(left: string[], right: string[]): number {
 function findCorrelatedGroup(
   incident: DefenderIncident,
   groups: BlackpointGroupLike[]
-): BlackpointGroupLike | undefined {
+): { group: BlackpointGroupLike; score: number } | undefined {
   const incidentTokens = normalize(
     [incident.title, incident.category, incident.tags.join(' ')].join(' ')
   );
@@ -118,8 +151,20 @@ function findCorrelatedGroup(
       return { group, score: keywordOverlap(incidentTokens, groupTokens) };
     })
     .filter((entry) => entry.score > 0)
-    .sort((left, right) => right.score - left.score || right.group.riskScore - left.group.riskScore)[0]
-    ?.group;
+    .sort((left, right) => right.score - left.score || right.group.riskScore - left.group.riskScore)[0];
+}
+
+function getCorrelationConfidence(score: number): CorrelationConfidence {
+  if (score >= 4) return 'high';
+  if (score >= 2) return 'medium';
+  return 'low';
+}
+
+function getIncidentReference(incident: DefenderIncident): string {
+  if (incident.incidentNumber !== undefined && incident.incidentNumber !== null) {
+    return `#${incident.incidentNumber}`;
+  }
+  return incident.id;
 }
 
 function classifyIncident(incident: DefenderIncident): {
@@ -239,27 +284,75 @@ export async function loadTenantDefenderSnapshot(
   }
 
   const data = (await response.json()) as DefenderTenantSnapshot;
+
+  const incidents = (data.incidents ?? []).map((incident) => {
+    const mutableIncident = incident as DefenderIncident & {
+      incidentNo?: string | number;
+      caseNumber?: string | number;
+    };
+
+    return {
+      ...incident,
+      incidentNumber:
+        mutableIncident.incidentNumber ??
+        mutableIncident.incidentNo ??
+        mutableIncident.caseNumber,
+    };
+  });
+
   return {
     ...data,
     tenantId: data.tenantId || tenant.id,
-    source: 'api'
+    source: 'api',
+    incidents,
   };
 }
 
 export function buildTenantOwnershipView(
   groups: BlackpointGroupLike[],
-  snapshot: DefenderTenantSnapshot
+  snapshot: DefenderTenantSnapshot,
+  overrides: CorrelationOverrideMap = {}
 ): TenantOwnershipView {
+  const groupById = new Map(groups.map((group) => [group.id, group]));
+
   const workItems = snapshot.incidents.map((incident) => {
-    const correlation = findCorrelatedGroup(incident, groups);
+    let correlation = findCorrelatedGroup(incident, groups);
     const classification = classifyIncident(incident);
+    const override = overrides[incident.id];
+
+    if (override?.action === 'no-match') {
+      correlation = undefined;
+    }
+
+    if (override?.action === 'match' && override.groupId) {
+      const overrideGroup = groupById.get(override.groupId);
+      if (overrideGroup) {
+        correlation = {
+          group: overrideGroup,
+          score: 999,
+        };
+      }
+    }
+
+    const correlationConfidence =
+      override?.action === 'match'
+        ? ('analyst-confirmed' as CorrelationConfidence)
+        : correlation && correlation.score > 0
+          ? getCorrelationConfidence(correlation.score)
+          : undefined;
+
     return {
       incident,
+      xdrIncidentRef: getIncidentReference(incident),
       owner: classification.owner,
       blackpointCoverage: classification.blackpointCoverage,
       rationale: classification.rationale,
-      correlatedGroupId: correlation?.id,
-      correlatedTicketId: correlation?.ticketId
+      correlatedGroupId: correlation?.group.id,
+      correlatedTicketId: correlation?.group.ticketId,
+      correlationScore: correlation?.score,
+      correlationConfidence,
+      overrideApplied: Boolean(override),
+      overrideAction: override?.action,
     };
   });
 
@@ -292,6 +385,52 @@ export function buildTenantOwnershipView(
     )
   ).slice(0, 5);
 
+  const closeout: CloseoutReconciliationSummary = {
+    bpResolvedAndXdrResolved: 0,
+    bpResolvedXdrActive: 0,
+    bpOpenXdrResolved: 0,
+    bpOpenXdrActive: 0,
+    unmatchedXdr: 0,
+    unmatchedBp: 0,
+  };
+
+  workItems.forEach((item) => {
+    if (!item.correlatedGroupId) {
+      closeout.unmatchedXdr += 1;
+      return;
+    }
+
+    const matchedGroup = groupById.get(item.correlatedGroupId);
+    if (!matchedGroup) {
+      closeout.unmatchedXdr += 1;
+      return;
+    }
+
+    const bpResolved = matchedGroup.status === 'RESOLVED';
+    const xdrResolved = item.incident.status === 'resolved';
+
+    if (bpResolved && xdrResolved) {
+      closeout.bpResolvedAndXdrResolved += 1;
+      return;
+    }
+
+    if (bpResolved && !xdrResolved) {
+      closeout.bpResolvedXdrActive += 1;
+      return;
+    }
+
+    if (!bpResolved && xdrResolved) {
+      closeout.bpOpenXdrResolved += 1;
+      return;
+    }
+
+    closeout.bpOpenXdrActive += 1;
+  });
+
+  closeout.unmatchedBp = groups.filter(
+    (group) => !workItems.some((item) => item.correlatedGroupId === group.id)
+  ).length;
+
   return {
     snapshot,
     blackpointDetections,
@@ -306,6 +445,7 @@ export function buildTenantOwnershipView(
       ).length,
       correlatedItems: workItems.filter((item) => item.correlatedGroupId).length
     },
+    closeout,
     recommendations
   };
 }

@@ -101,6 +101,15 @@
   color: #94a3b8;
 }
 
+.xdr-override-message {
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  color: #bfdbfe;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
 .xdr-sections-grid {
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
 }
@@ -129,6 +138,57 @@
 .xdr-section-header span {
   color: #94a3b8;
   font-size: 13px;
+}
+
+.xdr-export-btn {
+  border: 1px solid #60a5fa;
+  background: rgba(59, 130, 246, 0.16);
+  color: #bfdbfe;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.xdr-export-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.xdr-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #334155;
+  border-radius: 10px;
+}
+
+.xdr-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 700px;
+}
+
+.xdr-table th,
+.xdr-table td {
+  border-bottom: 1px solid #334155;
+  padding: 10px;
+  text-align: left;
+  font-size: 12px;
+}
+
+.xdr-table th {
+  color: #94a3b8;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.xdr-table td {
+  color: #e2e8f0;
+}
+
+.xdr-table-footnote {
+  color: #94a3b8;
+  font-size: 12px;
+  margin-top: 8px;
 }
 
 .xdr-list {
@@ -251,6 +311,71 @@
   margin-bottom: 0;
 }
 
+.xdr-override-panel {
+  margin-top: 10px;
+  border: 1px solid #334155;
+  background: rgba(30, 41, 59, 0.65);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.xdr-override-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #93c5fd;
+  margin-bottom: 6px;
+}
+
+.xdr-override-text {
+  margin: 0 0 8px;
+  color: #cbd5e1;
+  font-size: 12px;
+}
+
+.xdr-override-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.xdr-override-select {
+  background: #0f172a;
+  border: 1px solid #475569;
+  color: #e2e8f0;
+  border-radius: 8px;
+  padding: 8px;
+  min-width: 260px;
+}
+
+.xdr-action-btn {
+  background: rgba(59, 130, 246, 0.16);
+  color: #bfdbfe;
+  border: 1px solid #60a5fa;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.xdr-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.xdr-action-btn.warn {
+  background: rgba(245, 158, 11, 0.16);
+  border-color: #f59e0b;
+  color: #fde68a;
+}
+
+.xdr-action-btn.ghost {
+  background: transparent;
+  border-color: #64748b;
+  color: #cbd5e1;
+}
+
 .xdr-empty-box,
 .xdr-panel-loading,
 .xdr-panel-error,
@@ -277,5 +402,9 @@
 
   .xdr-item-badges {
     justify-content: flex-start;
+  }
+
+  .xdr-override-select {
+    min-width: 100%;
   }
 }

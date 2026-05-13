@@ -4,6 +4,12 @@ import ClosedDetectionsViewer from './ClosedDetectionsViewer';
 import DetectionReportingDashboard from './DetectionReportingDashboard';
 import TenantXdrOwnershipPanel from './TenantXdrOwnershipPanel';
 import UnifiedSecurityPanel from './UnifiedSecurityPanel';
+import {
+  BlackpointReportRun,
+  getReportJsonForTenant,
+  getReportUrlForTenant,
+  listReportsForTenant,
+} from '../services/blackpointReports.service';
 
 // ---------------------------------------------------------------------------
 // Types — matching CompassOne API v1.4.0 spec
@@ -44,6 +50,39 @@ interface AlertGroupsResponse {
   total: number;
   start: number;
   end: number;
+}
+
+interface RecentClosedDetection {
+  id: string;
+  tenantId: string;
+  groupKey: string;
+  status: 'RESOLVED';
+  alertCount: number;
+  riskScore: number;
+  alertTypes: string[];
+  createdDate: string;
+  resolvedDate?: string;
+  daysOpen?: number;
+  ticketId?: string;
+}
+
+interface TenantDetectionReportData {
+  tenantName: string;
+  stats: {
+    totalDetections: number;
+    openDetections: number;
+    resolvedDetections: number;
+    averageRiskScore: number;
+    maxRiskScore: number;
+    minRiskScore: number;
+  };
+  topAlertTypes: Array<{ type: string; count: number }>;
+  riskScoreDistribution: Array<{ range: string; count: number }>;
+  recentClosed: RecentClosedDetection[];
+  reportGeneratedAt: string;
+  nativeReports: BlackpointReportRun[];
+  latestNativeReportsByType: Record<string, BlackpointReportRun>;
+  nativeReportsError?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -163,9 +202,15 @@ const TenantDetailPage: React.FC<TenantDetailProps> = ({ tenant, onBack }) => {
   const [closedDetections, setClosedDetections] = useState<AlertGroup[]>([]);
   const [closedLoading, setClosedLoading] = useState(false);
   const [closedError, setClosedError] = useState<string | null>(null);
-  const [reportData, setReportData] = useState<any>(null);
+  const [reportData, setReportData] = useState<TenantDetectionReportData | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
+  const [nativeReportActionLoadingId, setNativeReportActionLoadingId] = useState<string | null>(null);
+  const [nativeReportActionError, setNativeReportActionError] = useState<string | null>(null);
+  const [selectedNativeReportId, setSelectedNativeReportId] = useState<string | null>(null);
+  const [selectedNativeReportJson, setSelectedNativeReportJson] = useState<Record<string, unknown> | null>(null);
+  const [nativeReportJsonLoading, setNativeReportJsonLoading] = useState(false);
+  const [nativeReportJsonError, setNativeReportJsonError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -211,6 +256,7 @@ const TenantDetailPage: React.FC<TenantDetailProps> = ({ tenant, onBack }) => {
     if (activeTab !== 'report' || reportData) return;
     let active = true;
     setReportLoading(true);
+    setReportError(null);
     (async () => {
       try {
         const all: AlertGroup[] = [];
@@ -227,60 +273,150 @@ const TenantDetailPage: React.FC<TenantDetailProps> = ({ tenant, onBack }) => {
           if (data.items.length < take) break;
         }
 
-          const openGroups = all.filter(g => g.status === 'OPEN');
-          const resolvedGroups = all.filter(g => g.status === 'RESOLVED');
-          const riskScores = all.map(g => g.riskScore);
+        const openGroups = all.filter((g) => g.status === 'OPEN');
+        const resolvedGroups = all.filter((g) => g.status === 'RESOLVED');
+        const riskScores = all.map((g) => g.riskScore);
 
-          // Calculate risk distribution
-          const distribution = [
-            { range: '0-20', count: all.filter(g => g.riskScore >= 0 && g.riskScore <= 20).length },
-            { range: '21-40', count: all.filter(g => g.riskScore >= 21 && g.riskScore <= 40).length },
-            { range: '41-60', count: all.filter(g => g.riskScore >= 41 && g.riskScore <= 60).length },
-            { range: '61-80', count: all.filter(g => g.riskScore >= 61 && g.riskScore <= 80).length },
-            { range: '81-100', count: all.filter(g => g.riskScore >= 81 && g.riskScore <= 100).length }
-          ];
+        // Calculate risk distribution
+        const distribution = [
+          { range: '0-20', count: all.filter((g) => g.riskScore >= 0 && g.riskScore <= 20).length },
+          { range: '21-40', count: all.filter((g) => g.riskScore >= 21 && g.riskScore <= 40).length },
+          { range: '41-60', count: all.filter((g) => g.riskScore >= 41 && g.riskScore <= 60).length },
+          { range: '61-80', count: all.filter((g) => g.riskScore >= 61 && g.riskScore <= 80).length },
+          { range: '81-100', count: all.filter((g) => g.riskScore >= 81 && g.riskScore <= 100).length }
+        ];
 
-          // Calculate top alert types
-          const typeCounts: Record<string, number> = {};
-          all.forEach(g => {
-            g.alertTypes.forEach(t => {
-              typeCounts[t] = (typeCounts[t] || 0) + 1;
-            });
+        // Calculate top alert types
+        const typeCounts: Record<string, number> = {};
+        all.forEach((g) => {
+          g.alertTypes.forEach((t) => {
+            typeCounts[t] = (typeCounts[t] || 0) + 1;
           });
-          const topAlertTypes = Object.entries(typeCounts)
-            .map(([type, count]) => ({ type, count }))
-            .sort((a, b) => b.count - a.count)
-            .slice(0, 10);
+        });
+        const topAlertTypes = Object.entries(typeCounts)
+          .map(([type, count]) => ({ type, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 10);
 
-          // Get recent closed detections
-          const recentClosed = all
-            .filter(g => g.status === 'RESOLVED')
-            .sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime())
-            .slice(0, 20);
+        const recentClosed: RecentClosedDetection[] = resolvedGroups
+          .sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime())
+          .slice(0, 20)
+          .map((group) => ({
+            id: group.id,
+            tenantId: group.customerId,
+            groupKey: group.groupKey,
+            status: 'RESOLVED',
+            alertCount: group.alertCount,
+            riskScore: group.riskScore,
+            alertTypes: group.alertTypes,
+            createdDate: group.created,
+            resolvedDate: group.updated || undefined,
+            daysOpen: group.updated
+              ? Math.ceil(
+                  (new Date(group.updated).getTime() - new Date(group.created).getTime()) /
+                    (1000 * 60 * 60 * 24)
+                )
+              : undefined,
+            ticketId: group.ticketId,
+          }));
 
-          if (active) setReportData({
+        let nativeReports: BlackpointReportRun[] = [];
+        let latestNativeReportsByType: Record<string, BlackpointReportRun> = {};
+        let nativeReportsError: string | undefined;
+
+        try {
+          const reportResponse = await listReportsForTenant(tenant.id, {
+            page: 1,
+            pageSize: 50,
+            sortBy: 'intervalStart',
+            sortOrder: 'desc',
+          });
+
+          nativeReports = reportResponse.data ?? [];
+          latestNativeReportsByType = nativeReports.reduce<Record<string, BlackpointReportRun>>(
+            (acc, run) => {
+              if (!acc[run.reportType]) {
+                acc[run.reportType] = run;
+              }
+              return acc;
+            },
+            {}
+          );
+        } catch (nativeErr) {
+          nativeReportsError = nativeErr instanceof Error ? nativeErr.message : 'Unable to load native reports';
+        }
+
+        if (active) {
+          setReportData({
             tenantName: tenant.name,
             stats: {
               totalDetections: all.length,
               openDetections: openGroups.length,
               resolvedDetections: resolvedGroups.length,
-              averageRiskScore: riskScores.length > 0 ? riskScores.reduce((a, b) => a + b, 0) / riskScores.length : 0,
+              averageRiskScore:
+                riskScores.length > 0
+                  ? riskScores.reduce((a, b) => a + b, 0) / riskScores.length
+                  : 0,
               maxRiskScore: riskScores.length > 0 ? Math.max(...riskScores) : 0,
-              minRiskScore: riskScores.length > 0 ? Math.min(...riskScores) : 0
+              minRiskScore: riskScores.length > 0 ? Math.min(...riskScores) : 0,
             },
             topAlertTypes,
             riskScoreDistribution: distribution,
             recentClosed,
-            reportGeneratedAt: new Date().toISOString()
+            reportGeneratedAt: new Date().toISOString(),
+            nativeReports,
+            latestNativeReportsByType,
+            nativeReportsError,
           });
-        } catch (err) {
-          if (active) setReportError(err instanceof Error ? err.message : 'Unknown error');
-        } finally {
-          if (active) setReportLoading(false);
         }
-      })();
+      } catch (err) {
+        if (active) setReportError(err instanceof Error ? err.message : 'Unknown error');
+      } finally {
+        if (active) setReportLoading(false);
+      }
+    })();
     return () => { active = false; };
   }, [activeTab, tenant.id, reportData]);
+
+  const handleOpenNativeReportPdf = async (reportId: string) => {
+    setNativeReportActionError(null);
+    setNativeReportActionLoadingId(reportId);
+    try {
+      const response = await getReportUrlForTenant(tenant.id, reportId);
+      const url = response.data?.url;
+      if (!url) {
+        throw new Error('Native report URL was empty');
+      }
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      setNativeReportActionError(err instanceof Error ? err.message : 'Failed to open report PDF');
+    } finally {
+      setNativeReportActionLoadingId(null);
+    }
+  };
+
+  const handleViewNativeReportJson = async (reportId: string) => {
+    if (selectedNativeReportId === reportId && selectedNativeReportJson) {
+      setSelectedNativeReportId(null);
+      setSelectedNativeReportJson(null);
+      setNativeReportJsonError(null);
+      return;
+    }
+
+    setNativeReportJsonLoading(true);
+    setNativeReportJsonError(null);
+    setSelectedNativeReportId(reportId);
+
+    try {
+      const response = await getReportJsonForTenant(tenant.id, reportId);
+      setSelectedNativeReportJson(response.data.report);
+    } catch (err) {
+      setSelectedNativeReportJson(null);
+      setNativeReportJsonError(err instanceof Error ? err.message : 'Failed to load report JSON');
+    } finally {
+      setNativeReportJsonLoading(false);
+    }
+  };
 
   const openGroups = groups.filter(g => g.status === 'OPEN');
   const resolvedGroups = groups.filter(g => g.status === 'RESOLVED');
@@ -561,15 +697,125 @@ const TenantDetailPage: React.FC<TenantDetailProps> = ({ tenant, onBack }) => {
             {activeTab === 'report' && (
               <div>
                 {reportData ? (
-                  <DetectionReportingDashboard
-                    tenantName={reportData.tenantName}
-                    stats={reportData.stats}
-                    topAlertTypes={reportData.topAlertTypes}
-                    riskScoreDistribution={reportData.riskScoreDistribution}
-                    recentClosed={reportData.recentClosed}
-                    reportGeneratedAt={reportData.reportGeneratedAt}
-                    isLoading={reportLoading}
-                  />
+                  <>
+                    <div className="detail-header-card" style={{ marginBottom: 20 }}>
+                      <div className="card-header" style={{ alignItems: 'flex-start' }}>
+                        <div>
+                          <h2 className="section-title" style={{ marginBottom: 8 }}>
+                            Native Blackpoint Reports
+                          </h2>
+                          <p className="detail-subtitle" style={{ margin: 0 }}>
+                            Report runs from /v1/reports with direct access to PDF URLs and JSON payloads.
+                          </p>
+                        </div>
+                      </div>
+
+                      {reportData.nativeReportsError && (
+                        <div className="error-message" style={{ marginTop: 12 }}>
+                          ⚠ {reportData.nativeReportsError}
+                        </div>
+                      )}
+
+                      {reportData.nativeReports.length === 0 ? (
+                        <div className="empty-state" style={{ marginTop: 12 }}>
+                          No native reports were returned for this tenant.
+                        </div>
+                      ) : (
+                        <div className="table-container" style={{ marginTop: 12 }}>
+                          <table className="priority-table">
+                            <thead>
+                              <tr className="table-header-row">
+                                <th className="table-header">TYPE</th>
+                                <th className="table-header">INTERVAL</th>
+                                <th className="table-header">CREATED</th>
+                                <th className="table-header text-right">ACTIONS</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {reportData.nativeReports.slice(0, 20).map((run) => (
+                                <tr key={run.id} className="table-row">
+                                  <td className="table-cell">
+                                    <span className="severity-badge medium">{run.reportType}</span>
+                                  </td>
+                                  <td className="table-cell">
+                                    {fmtDate(run.intervalStart)} - {fmtDate(run.intervalEnd)}
+                                  </td>
+                                  <td className="table-cell">{fmt(run.created)}</td>
+                                  <td className="table-cell text-right">
+                                    <button
+                                      className="btn-primary"
+                                      disabled={nativeReportActionLoadingId === run.id}
+                                      onClick={() => handleOpenNativeReportPdf(run.id)}
+                                    >
+                                      {nativeReportActionLoadingId === run.id ? 'Opening...' : 'Open PDF'}
+                                    </button>
+                                    <button
+                                      className="btn-primary"
+                                      style={{ marginLeft: 8 }}
+                                      disabled={nativeReportJsonLoading && selectedNativeReportId === run.id}
+                                      onClick={() => handleViewNativeReportJson(run.id)}
+                                    >
+                                      {selectedNativeReportId === run.id ? 'Hide JSON' : 'View JSON'}
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+
+                      {nativeReportActionError && (
+                        <div className="error-message" style={{ marginTop: 12 }}>
+                          ⚠ {nativeReportActionError}
+                        </div>
+                      )}
+
+                      {selectedNativeReportId && (
+                        <div className="alert-section" style={{ marginTop: 16 }}>
+                          <div className="alert-section-title">
+                            NATIVE REPORT JSON PREVIEW ({selectedNativeReportId})
+                          </div>
+                          {nativeReportJsonLoading && (
+                            <div className="loading-state">Loading report JSON...</div>
+                          )}
+                          {nativeReportJsonError && (
+                            <div className="error-message">⚠ {nativeReportJsonError}</div>
+                          )}
+                          {!nativeReportJsonLoading && !nativeReportJsonError && selectedNativeReportJson && (
+                            <pre
+                              style={{
+                                maxHeight: 380,
+                                overflow: 'auto',
+                                padding: 12,
+                                borderRadius: 8,
+                                border: '1px solid rgba(148, 163, 184, 0.25)',
+                                background: 'rgba(2, 6, 23, 0.65)',
+                                color: '#dbeafe',
+                                fontSize: 12,
+                                lineHeight: 1.45,
+                              }}
+                            >
+                              {JSON.stringify(selectedNativeReportJson, null, 2).slice(0, 12000)}
+                              {JSON.stringify(selectedNativeReportJson, null, 2).length > 12000
+                                ? '\n\n...truncated for UI preview...'
+                                : ''}
+                            </pre>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <DetectionReportingDashboard
+                      tenantName={reportData.tenantName}
+                      stats={reportData.stats}
+                      topAlertTypes={reportData.topAlertTypes}
+                      riskScoreDistribution={reportData.riskScoreDistribution}
+                      recentClosed={reportData.recentClosed}
+                      reportGeneratedAt={reportData.reportGeneratedAt}
+                      isLoading={reportLoading}
+                    />
+                  </>
                 ) : (
                   <div>{reportLoading ? 'Loading report...' : reportError ? `Error: ${reportError}` : 'No report data'}</div>
                 )}

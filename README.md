@@ -97,12 +97,20 @@ $env:DEFENDER_XDR_PROXY_TARGET = "http://localhost:7071"
 ### Available Endpoints
 
 ✅ **GET /v1/tenants** - List all tenants
+✅ **GET /v1/alert-groups** - List detections (open/resolved) with filtering
+✅ **GET /v1/alert-groups/count** - Detection counts
+✅ **GET /v1/alert-groups/alert-groups-by-week** - Weekly trends
+✅ **GET /v1/alert-groups/top-detections-by-entity** - Top entities
+✅ **GET /v1/alert-groups/top-detections-by-threat** - Top threats
+✅ **GET /v1/reports** - List native CompassOne reports
+✅ **GET /v1/reports/{id}/url** - Signed PDF URL for report
+✅ **GET /v1/reports/{id}/json** - Native report JSON payload
 ✅ **GET /v1/notifications** - Get notifications
 
-### Tested But Unavailable
+### Role-Limited Or Unavailable
 
 ❌ /v1/alerts (404)
-❌ /v1/incidents (403)
+⚠️ /v1/incidents (403 unless API role grants access)
 ❌ /v1/tenants/:id (404)
 ❌ /v1/tenants/:id/alerts (404)
 

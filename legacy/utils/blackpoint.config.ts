@@ -30,7 +30,7 @@ export class BlackpointConfig {
 }
 
 /**
- * API endpoints from CompassOne API v1.4.0 spec
+ * API endpoints from CompassOne API v1.7.0 spec
  */
 export const BLACKPOINT_ENDPOINTS = {
   // Tenants
@@ -38,10 +38,17 @@ export const BLACKPOINT_ENDPOINTS = {
 
   // Alert Groups (Detections) — use x-tenant-id header to scope by tenant
   ALERT_GROUPS: '/alert-groups',
+  ALERT_GROUPS_ALERTS_SUFFIX: '/alerts',
   ALERT_GROUPS_BY_WEEK: '/alert-groups/alert-groups-by-week',
   ALERT_GROUPS_COUNT: '/alert-groups/count',
   TOP_DETECTIONS_BY_ENTITY: '/alert-groups/top-detections-by-entity',
   TOP_DETECTIONS_BY_THREAT: '/alert-groups/top-detections-by-threat',
+
+  // Reports
+  REPORTS: '/reports',
+  REPORTS_URL_SUFFIX: '/url',
+  REPORTS_BINARY_SUFFIX: '/binary',
+  REPORTS_JSON_SUFFIX: '/json',
 
   // Assets
   ASSETS: '/assets',

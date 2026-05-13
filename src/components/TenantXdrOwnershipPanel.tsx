@@ -2,7 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import './TenantXdrOwnershipPanel.css';
 import {
   BlackpointGroupLike,
+  CorrelationOverride,
+  CorrelationOverrideMap,
   DefenderWorkItem,
+  DefenderTenantSnapshot,
   TenantLike,
   TenantOwnershipView,
   buildTenantOwnershipView,
@@ -12,6 +15,14 @@ import {
   ownerOrder,
   severityRank
 } from '../services/defenderXdr.service';
+import {
+  CloseoutGovernanceRow,
+  buildCloseoutGovernanceRows,
+  downloadCloseoutGovernanceCsv,
+  loadCorrelationOverrides,
+  removeCorrelationOverride,
+  upsertCorrelationOverride,
+} from '../services/closeoutGovernance.service';
 
 interface TenantXdrOwnershipPanelProps {
   tenant: TenantLike;
@@ -34,9 +45,19 @@ const TenantXdrOwnershipPanel: React.FC<TenantXdrOwnershipPanelProps> = ({
   tenant,
   blackpointGroups
 }) => {
+  const [snapshot, setSnapshot] = useState<DefenderTenantSnapshot | null>(null);
   const [view, setView] = useState<TenantOwnershipView | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [overrides, setOverrides] = useState<CorrelationOverrideMap>({});
+  const [overrideSelection, setOverrideSelection] = useState<Record<string, string>>({});
+  const [overrideMessage, setOverrideMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setOverrides(loadCorrelationOverrides(tenant.id));
+    setOverrideSelection({});
+    setOverrideMessage(null);
+  }, [tenant.id]);
 
   useEffect(() => {
     let active = true;
@@ -45,9 +66,9 @@ const TenantXdrOwnershipPanel: React.FC<TenantXdrOwnershipPanelProps> = ({
     setError(null);
 
     loadTenantDefenderSnapshot(tenant)
-      .then((snapshot) => {
+      .then((nextSnapshot) => {
         if (!active) return;
-        setView(buildTenantOwnershipView(blackpointGroups, snapshot));
+        setSnapshot(nextSnapshot);
       })
       .catch((err: Error) => {
         if (!active) return;
@@ -60,7 +81,53 @@ const TenantXdrOwnershipPanel: React.FC<TenantXdrOwnershipPanelProps> = ({
     return () => {
       active = false;
     };
-  }, [tenant, blackpointGroups]);
+  }, [tenant]);
+
+  useEffect(() => {
+    if (!snapshot) {
+      setView(null);
+      return;
+    }
+
+    setView(buildTenantOwnershipView(blackpointGroups, snapshot, overrides));
+  }, [snapshot, blackpointGroups, overrides]);
+
+  const applyOverride = (override: CorrelationOverride): void => {
+    const next = upsertCorrelationOverride(tenant.id, override);
+    setOverrides(next);
+  };
+
+  const handleConfirmMatch = (incidentId: string): void => {
+    const selectedGroupId =
+      overrideSelection[incidentId] ??
+      view?.workItems.find((item) => item.incident.id === incidentId)?.correlatedGroupId;
+    if (!selectedGroupId) return;
+
+    applyOverride({
+      incidentId,
+      action: 'match',
+      groupId: selectedGroupId,
+      updatedAt: new Date().toISOString(),
+    });
+
+    setOverrideMessage(`Saved analyst match for incident ${incidentId}.`);
+  };
+
+  const handleMarkNoMatch = (incidentId: string): void => {
+    applyOverride({
+      incidentId,
+      action: 'no-match',
+      updatedAt: new Date().toISOString(),
+    });
+
+    setOverrideMessage(`Marked incident ${incidentId} as no Blackpoint match.`);
+  };
+
+  const handleClearOverride = (incidentId: string): void => {
+    const next = removeCorrelationOverride(tenant.id, incidentId);
+    setOverrides(next);
+    setOverrideMessage(`Cleared override for incident ${incidentId}.`);
+  };
 
   const queuedItems = useMemo(() => {
     if (!view) return [] as DefenderWorkItem[];
@@ -70,6 +137,11 @@ const TenantXdrOwnershipPanel: React.FC<TenantXdrOwnershipPanelProps> = ({
       return severityRank(right.incident.severity) - severityRank(left.incident.severity);
     });
   }, [view]);
+
+  const closeoutRows = useMemo(() => {
+    if (!view) return [] as CloseoutGovernanceRow[];
+    return buildCloseoutGovernanceRows(tenant, blackpointGroups, view);
+  }, [tenant, blackpointGroups, view]);
 
   if (loading) {
     return <div className="xdr-panel-loading">Loading Defender XDR ownership view...</div>;
@@ -126,6 +198,87 @@ const TenantXdrOwnershipPanel: React.FC<TenantXdrOwnershipPanelProps> = ({
         <span>Correlated with Blackpoint: {view.summary.correlatedItems}</span>
         <span>Critical uncovered gaps: {view.summary.criticalGaps}</span>
       </div>
+
+      {overrideMessage && (
+        <div className="xdr-override-message">{overrideMessage}</div>
+      )}
+
+      <section className="xdr-section" style={{ marginTop: 16 }}>
+        <div className="xdr-section-header">
+          <h3>Closeout Reconciliation</h3>
+          <span>Blackpoint vs Office365 XDR</span>
+        </div>
+        <div className="xdr-summary-grid">
+          <div className="xdr-summary-card blackpoint">
+            <div className="xdr-summary-label">Both Closed</div>
+            <div className="xdr-summary-value">{view.closeout.bpResolvedAndXdrResolved}</div>
+            <div className="xdr-summary-note">BP resolved and XDR resolved</div>
+          </div>
+          <div className="xdr-summary-card secops">
+            <div className="xdr-summary-label">Needs XDR Closeout</div>
+            <div className="xdr-summary-value">{view.closeout.bpResolvedXdrActive}</div>
+            <div className="xdr-summary-note">BP resolved but XDR still active</div>
+          </div>
+          <div className="xdr-summary-card shared">
+            <div className="xdr-summary-label">Needs BP Closeout</div>
+            <div className="xdr-summary-value">{view.closeout.bpOpenXdrResolved}</div>
+            <div className="xdr-summary-note">XDR resolved while BP remains open</div>
+          </div>
+          <div className="xdr-summary-card customer">
+            <div className="xdr-summary-label">Unmatched Items</div>
+            <div className="xdr-summary-value">
+              {view.closeout.unmatchedXdr} / {view.closeout.unmatchedBp}
+            </div>
+            <div className="xdr-summary-note">Unmatched XDR incidents / BP detections</div>
+          </div>
+        </div>
+      </section>
+
+      <section className="xdr-section">
+        <div className="xdr-section-header">
+          <h3>Closeout Governance Export View</h3>
+          <button
+            className="xdr-export-btn"
+            onClick={() => downloadCloseoutGovernanceCsv(tenant, closeoutRows)}
+            disabled={closeoutRows.length === 0}
+          >
+            Export CSV
+          </button>
+        </div>
+        {closeoutRows.length === 0 ? (
+          <div className="xdr-empty-box">No closeout rows to export for this tenant.</div>
+        ) : (
+          <>
+            <div className="xdr-table-wrap">
+              <table className="xdr-table">
+                <thead>
+                  <tr>
+                    <th>XDR Incident</th>
+                    <th>BP Ticket</th>
+                    <th>Reconciliation Status</th>
+                    <th>Confidence</th>
+                    <th>Method</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {closeoutRows.slice(0, 20).map((row, idx) => (
+                    <tr key={`${row.xdrIncidentId || 'bp'}-${row.bpGroupId || idx}`}>
+                      <td>{row.xdrIncidentRef || '—'}</td>
+                      <td>{row.bpTicketId || '—'}</td>
+                      <td>{row.reconciliationStatus}</td>
+                      <td>{row.correlationConfidence || '—'}</td>
+                      <td>{row.correlationMethod}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="xdr-table-footnote">
+              Showing first {Math.min(20, closeoutRows.length)} of {closeoutRows.length} rows.
+            </div>
+          </>
+        )}
+      </section>
 
       <div className="xdr-sections-grid">
         <section className="xdr-section">
@@ -190,6 +343,7 @@ const TenantXdrOwnershipPanel: React.FC<TenantXdrOwnershipPanelProps> = ({
                     <div>
                       <div className="xdr-item-title">{item.incident.title}</div>
                       <div className="xdr-item-meta">
+                        <span>XDR Incident: {item.xdrIncidentRef}</span>
                         <span>{getServiceLabel(item.incident.serviceSource)}</span>
                         <span>{fmt(item.incident.createdDate)}</span>
                         {item.correlatedTicketId && <span>BP Ticket: {item.correlatedTicketId}</span>}
@@ -206,6 +360,11 @@ const TenantXdrOwnershipPanel: React.FC<TenantXdrOwnershipPanelProps> = ({
                             ? 'Partial'
                             : 'Gap'}
                       </span>
+                      {item.correlationConfidence && (
+                        <span className={`coverage-badge ${item.correlationConfidence === 'analyst-confirmed' || item.correlationConfidence === 'high' ? 'covered' : item.correlationConfidence === 'medium' ? 'partial' : 'gap'}`}>
+                          Correlation: {item.correlationConfidence}
+                        </span>
+                      )}
                       <span className={`severity-badge-xdr ${severityClass(item.incident.severity)}`}>
                         {item.incident.severity}
                       </span>
@@ -216,6 +375,58 @@ const TenantXdrOwnershipPanel: React.FC<TenantXdrOwnershipPanelProps> = ({
                     <p>
                       <strong>Recommended action:</strong> {item.incident.recommendedAction}
                     </p>
+                    {(item.correlationConfidence === 'low' || item.overrideApplied) && (
+                      <div className="xdr-override-panel">
+                        <div className="xdr-override-title">Analyst Correlation Review</div>
+                        <p className="xdr-override-text">
+                          {item.overrideApplied
+                            ? item.overrideAction === 'match'
+                              ? 'Analyst override is active and will be reused for this incident.'
+                              : 'Analyst override marks this incident as having no Blackpoint match.'
+                            : 'Low-confidence match detected. Confirm once and the decision will be reused automatically.'}
+                        </p>
+                        <div className="xdr-override-controls">
+                          <select
+                            className="xdr-override-select"
+                            value={overrideSelection[item.incident.id] ?? item.correlatedGroupId ?? ''}
+                            onChange={(event) =>
+                              setOverrideSelection((prev) => ({
+                                ...prev,
+                                [item.incident.id]: event.target.value,
+                              }))
+                            }
+                          >
+                            <option value="">Select Blackpoint detection</option>
+                            {blackpointGroups.map((group) => (
+                              <option key={group.id} value={group.id}>
+                                {group.ticketId || group.id} - {group.alertTypes[0] || group.groupKey}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            className="xdr-action-btn"
+                            onClick={() => handleConfirmMatch(item.incident.id)}
+                            disabled={!Boolean(overrideSelection[item.incident.id] ?? item.correlatedGroupId)}
+                          >
+                            Confirm Match
+                          </button>
+                          <button
+                            className="xdr-action-btn warn"
+                            onClick={() => handleMarkNoMatch(item.incident.id)}
+                          >
+                            Mark No Match
+                          </button>
+                          {item.overrideApplied && (
+                            <button
+                              className="xdr-action-btn ghost"
+                              onClick={() => handleClearOverride(item.incident.id)}
+                            >
+                              Clear Override
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </article>
               ))}
