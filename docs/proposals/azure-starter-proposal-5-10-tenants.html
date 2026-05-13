@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Starter Proposal: Azure Multi-Tenant React Platform (5-10 Tenants)</title>
+  <style>
+    :root {
+      --bg: #f1f6fb;
+      --surface: #ffffff;
+      --ink: #1a2435;
+      --muted: #4f5b71;
+      --line: #d4deec;
+      --blue: #0a5bd8;
+      --teal: #0b8f7a;
+      --amber: #c98600;
+      --violet: #7a4dd8;
+      --shadow: 0 10px 28px rgba(16, 39, 68, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--ink);
+      background: linear-gradient(180deg, #fbfdff 0%, var(--bg) 100%);
+      line-height: 1.55;
+    }
+
+    .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #0d1f3f 0%, #0a5bd8 58%, #4c8ff2 100%);
+      color: #fff;
+      border-radius: 16px;
+      padding: 26px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 1.72rem;
+    }
+
+    .hero p {
+      margin: 0;
+      color: #dbe8ff;
+    }
+
+    .tag-row {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tag {
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.42);
+      background: rgba(255, 255, 255, 0.18);
+      font-size: 0.82rem;
+      color: #eef4ff;
+    }
+
+    .section {
+      margin-top: 18px;
+      padding: 20px;
+      background: var(--surface);
+      border-radius: 14px;
+      border: 1px solid #e4ebf7;
+      box-shadow: var(--shadow);
+    }
+
+    h2 {
+      margin-top: 0;
+      font-size: 1.3rem;
+    }
+
+    h3 {
+      margin-bottom: 8px;
+      font-size: 1.02rem;
+      color: #23385b;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .kpi {
+      border: 1px solid #cfdcf7;
+      background: #f4f8ff;
+      border-radius: 12px;
+      padding: 11px;
+    }
+
+    .kpi .label {
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .kpi .value {
+      margin-top: 3px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #11356d;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 16px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fcfdff;
+      padding: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.94rem;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #ebf2ff;
+      color: #1f3760;
+    }
+
+    tr:nth-child(even) td {
+      background: #fafcff;
+    }
+
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 12px;
+    }
+
+    canvas {
+      width: 100%;
+      height: 330px;
+      display: block;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+    }
+
+    .svg-panel {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 980px) {
+      .kpi-grid,
+      .split,
+      .cards,
+      .chart-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero h1 {
+        font-size: 1.44rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <h1>Starter Proposal: Azure Multi-Tenant React Platform (5-10 Tenants, 1K-10K Active Users)</h1>
+      <p>Date: 2026-05-13</p>
+      <div class="tag-row">
+        <span class="tag">Starter Scale</span>
+        <span class="tag">Single Region: East US</span>
+        <span class="tag">Runtime Target: $320-$1,460/month</span>
+        <span class="tag">Path to Enterprise Blueprint</span>
+      </div>
+    </header>
+
+    <section class="section">
+      <h2>Objective</h2>
+      <p>Provide a practical launch proposal for a smaller initial footprint while preserving a clear path to the full enterprise architecture.</p>
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="label">Tenants</div>
+          <div class="value">5 to 10</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Active Users</div>
+          <div class="value">1,000 to 10,000</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Region</div>
+          <div class="value">East US</div>
+        </div>
+        <div class="kpi">
+          <div class="label">6-Week Launch Plan</div>
+          <div class="value">Ready</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Scope and Assumptions</h2>
+      <ul>
+        <li>Tenant count: 5 to 10.</li>
+        <li>Active users: 1,000 to 10,000.</li>
+        <li>Region: East US, single-region deployment.</li>
+        <li>Stack: React frontend with a backend integration API.</li>
+        <li>Goal: production-ready baseline with controlled cost and low operational complexity.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>Recommended Starter Architecture</h2>
+      <div class="split">
+        <div>
+          <h3>Core Design</h3>
+          <ul>
+            <li>Keep the frontend in React and move all external security integrations to a backend API.</li>
+            <li>Start with a shared tenant model using tenant_id partitioning and strict tenant-scoped authorization.</li>
+            <li>Use one App Service plan for both frontend and backend apps at launch.</li>
+            <li>Use PostgreSQL Flexible Server for structured records and Blob Storage for evidence and exports.</li>
+            <li>Use Entra ID, app roles, and Key Vault from day one to avoid a security refactor later.</li>
+          </ul>
+
+          <h3>Service Topology (Starter)</h3>
+          <ul>
+            <li>App Service Plan Linux hosting frontend web app and backend integration API.</li>
+            <li>Azure Database for PostgreSQL Flexible Server.</li>
+            <li>Azure Blob Storage (Hot plus lifecycle to Cool).</li>
+            <li>Application Insights and Log Analytics.</li>
+            <li>Azure Key Vault.</li>
+            <li>Optional at growth stage: Front Door Standard plus WAF, Redis cache.</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h3>Architecture Graph</h3>
+          <svg class="svg-panel" viewBox="0 0 740 430" role="img" aria-label="Starter architecture graph">
+            <defs>
+              <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+                <polygon points="0 0, 8 4, 0 8" fill="#3e5f96"></polygon>
+              </marker>
+            </defs>
+
+            <rect x="265" y="24" width="210" height="56" rx="8" fill="#dce8ff" stroke="#6e8cc4"></rect>
+            <text x="370" y="57" text-anchor="middle" font-size="14" fill="#1a355f">Users / Browser Clients</text>
+
+            <rect x="80" y="132" width="260" height="64" rx="8" fill="#e6f4ff" stroke="#75a9cb"></rect>
+            <text x="210" y="170" text-anchor="middle" font-size="14" fill="#1c4260">App Service: React Frontend</text>
+
+            <rect x="400" y="132" width="260" height="64" rx="8" fill="#e9f8f2" stroke="#70aa8a"></rect>
+            <text x="530" y="170" text-anchor="middle" font-size="14" fill="#214f3a">App Service: Backend API</text>
+
+            <rect x="80" y="258" width="180" height="60" rx="8" fill="#fff2e1" stroke="#cc9f62"></rect>
+            <text x="170" y="293" text-anchor="middle" font-size="13" fill="#603f18">PostgreSQL</text>
+
+            <rect x="280" y="258" width="180" height="60" rx="8" fill="#fff2e1" stroke="#cc9f62"></rect>
+            <text x="370" y="293" text-anchor="middle" font-size="13" fill="#603f18">Blob Storage</text>
+
+            <rect x="480" y="258" width="180" height="60" rx="8" fill="#efeaff" stroke="#8f7bbe"></rect>
+            <text x="570" y="293" text-anchor="middle" font-size="13" fill="#47366f">Key Vault + Entra ID</text>
+
+            <rect x="280" y="346" width="180" height="60" rx="8" fill="#efeaff" stroke="#8f7bbe"></rect>
+            <text x="370" y="381" text-anchor="middle" font-size="13" fill="#47366f">App Insights + Logs</text>
+
+            <line x1="370" y1="80" x2="210" y2="132" stroke="#3e5f96" stroke-width="2" marker-end="url(#arr)"></line>
+            <line x1="370" y1="80" x2="530" y2="132" stroke="#3e5f96" stroke-width="2" marker-end="url(#arr)"></line>
+            <line x1="210" y1="196" x2="530" y2="196" stroke="#3e5f96" stroke-width="2" marker-end="url(#arr)"></line>
+
+            <line x1="530" y1="196" x2="170" y2="258" stroke="#3e5f96" stroke-width="2" marker-end="url(#arr)"></line>
+            <line x1="530" y1="196" x2="370" y2="258" stroke="#3e5f96" stroke-width="2" marker-end="url(#arr)"></line>
+            <line x1="530" y1="196" x2="570" y2="258" stroke="#3e5f96" stroke-width="2" marker-end="url(#arr)"></line>
+            <line x1="530" y1="196" x2="370" y2="346" stroke="#3e5f96" stroke-width="2" marker-end="url(#arr)"></line>
+          </svg>
+          <p class="small">Starter graph emphasizes minimal services with enterprise-compatible controls from day one.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Starter Resource Sizing</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Layer</th>
+            <th>Azure Service</th>
+            <th>Starter Recommendation</th>
+            <th>Scale Trigger</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Edge</td>
+            <td>App Service managed endpoint</td>
+            <td>Start without Front Door in pilot</td>
+            <td>Add Front Door + WAF at 5K+ active users or external exposure requirements</td>
+          </tr>
+          <tr>
+            <td>Web and API</td>
+            <td>App Service Plan Linux</td>
+            <td>S1, 1 instance, 2 apps on same plan</td>
+            <td>Move to 2 instances or P1v3 when p95 latency rises or CPU stays above 65 percent</td>
+          </tr>
+          <tr>
+            <td>Structured data</td>
+            <td>PostgreSQL Flexible Server</td>
+            <td>Burstable or small General Purpose</td>
+            <td>Scale vCores and IOPS at sustained DB CPU above 60 percent</td>
+          </tr>
+          <tr>
+            <td>Unstructured data</td>
+            <td>Blob Storage</td>
+            <td>Hot tier with lifecycle policy</td>
+            <td>Move older evidence to Cool/Archive at 30 to 90 days</td>
+          </tr>
+          <tr>
+            <td>Cache</td>
+            <td>Redis</td>
+            <td>Not required at pilot</td>
+            <td>Add C1 when repeated reads or dashboard aggregation latency appears</td>
+          </tr>
+          <tr>
+            <td>Secrets</td>
+            <td>Key Vault</td>
+            <td>Standard</td>
+            <td>Keep per-environment vaults as environments expand</td>
+          </tr>
+          <tr>
+            <td>Monitoring</td>
+            <td>App Insights + Log Analytics</td>
+            <td>Workspace-based telemetry</td>
+            <td>Increase retention and reduce sampling as incident/compliance needs grow</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>Monthly Runtime Cost Estimate</h2>
+      <p><strong>Assumptions:</strong> East US pricing, 730-hour month, runtime services only, and contingency for telemetry/egress variation.</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Scenario</th>
+            <th>Tenant Count</th>
+            <th>Active Users</th>
+            <th>Estimated Monthly Runtime</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Pilot</td><td>5</td><td>1,000</td><td>$320</td></tr>
+          <tr><td>Growth Start</td><td>8</td><td>5,000</td><td>$760</td></tr>
+          <tr><td>Upper Starter</td><td>10</td><td>10,000</td><td>$1,460</td></tr>
+        </tbody>
+      </table>
+
+      <div class="chart-grid">
+        <div class="card">
+          <h3>Chart 1: Scenario Runtime Cost</h3>
+          <canvas id="scenario"></canvas>
+        </div>
+        <div class="card">
+          <h3>Chart 2: Cost Category Comparison</h3>
+          <canvas id="category"></canvas>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Pilot</th>
+            <th>Growth Start</th>
+            <th>Upper Starter</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Front Door and WAF</td><td>$0</td><td>$90</td><td>$160</td></tr>
+          <tr><td>App Service (frontend + API)</td><td>$70</td><td>$220</td><td>$460</td></tr>
+          <tr><td>PostgreSQL Flexible Server</td><td>$100</td><td>$180</td><td>$320</td></tr>
+          <tr><td>Blob Storage</td><td>$10</td><td>$20</td><td>$45</td></tr>
+          <tr><td>Redis Cache</td><td>$0</td><td>$55</td><td>$120</td></tr>
+          <tr><td>Monitoring and logs</td><td>$90</td><td>$140</td><td>$250</td></tr>
+          <tr><td>Key Vault and network overhead</td><td>$50</td><td>$55</td><td>$105</td></tr>
+          <tr><td><strong>Total</strong></td><td><strong>$320</strong></td><td><strong>$760</strong></td><td><strong>$1,460</strong></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>Delivery Plan (6 Weeks)</h2>
+      <ol>
+        <li>Week 1: baseline environment, CI/CD pipeline, App Service and PostgreSQL provisioning.</li>
+        <li>Weeks 2 to 3: backend integration API extraction from browser-side service calls.</li>
+        <li>Week 4: Entra ID authentication, role mapping, and tenant-scoped authorization checks.</li>
+        <li>Week 5: observability setup, alerting, and light performance testing.</li>
+        <li>Week 6: pilot tenant rollout, runbook handoff, and production readiness review.</li>
+      </ol>
+
+      <svg class="svg-panel" viewBox="0 0 980 220" role="img" aria-label="Six-week timeline graph">
+        <rect x="0" y="0" width="980" height="220" fill="#fff"></rect>
+        <line x1="120" y1="40" x2="940" y2="40" stroke="#a0b3d2"></line>
+        <line x1="120" y1="78" x2="940" y2="78" stroke="#a0b3d2"></line>
+        <line x1="120" y1="116" x2="940" y2="116" stroke="#a0b3d2"></line>
+        <line x1="120" y1="154" x2="940" y2="154" stroke="#a0b3d2"></line>
+        <line x1="120" y1="192" x2="940" y2="192" stroke="#a0b3d2"></line>
+
+        <text x="12" y="46" font-size="13" fill="#2f466d">Week 1</text>
+        <text x="12" y="84" font-size="13" fill="#2f466d">Weeks 2-3</text>
+        <text x="12" y="122" font-size="13" fill="#2f466d">Week 4</text>
+        <text x="12" y="160" font-size="13" fill="#2f466d">Week 5</text>
+        <text x="12" y="198" font-size="13" fill="#2f466d">Week 6</text>
+
+        <rect x="120" y="27" width="136" height="24" rx="5" fill="#e6efff" stroke="#91a8d0"></rect>
+        <rect x="256" y="65" width="272" height="24" rx="5" fill="#e6efff" stroke="#91a8d0"></rect>
+        <rect x="528" y="103" width="136" height="24" rx="5" fill="#e6efff" stroke="#91a8d0"></rect>
+        <rect x="664" y="141" width="136" height="24" rx="5" fill="#e6efff" stroke="#91a8d0"></rect>
+        <rect x="800" y="179" width="136" height="24" rx="5" fill="#e6efff" stroke="#91a8d0"></rect>
+
+        <text x="145" y="44" font-size="12" fill="#22426e">Foundation</text>
+        <text x="350" y="82" font-size="12" fill="#22426e">API Extraction</text>
+        <text x="560" y="120" font-size="12" fill="#22426e">Auth + RBAC</text>
+        <text x="700" y="158" font-size="12" fill="#22426e">Observability</text>
+        <text x="842" y="196" font-size="12" fill="#22426e">Pilot Go-Live</text>
+      </svg>
+    </section>
+
+    <section class="section">
+      <h2>Exit Criteria to Move to the Enterprise Blueprint</h2>
+      <ul>
+        <li>Tenant count exceeds 10.</li>
+        <li>Active users consistently exceed 10,000.</li>
+        <li>Regulatory or customer requirements require stronger edge controls and tenant isolation tiers.</li>
+        <li>Sustained performance or availability targets require dedicated scaling tiers.</li>
+        <li>Security governance requires centralized edge policy and stronger segmentation.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>Recommendation</h2>
+      <p>Start with this smaller-scale proposal to reduce launch time and runtime cost while preserving compatibility with the larger enterprise plan. This gives a controlled entry point and avoids rework when scaling into 50+ tenants later.</p>
+    </section>
+  </div>
+
+  <script>
+    const fmt = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0
+    });
+
+    const scenario = {
+      labels: ["Pilot", "Growth Start", "Upper Starter"],
+      values: [320, 760, 1460],
+      colors: ["#0a5bd8", "#0b8f7a", "#c98600"]
+    };
+
+    const category = {
+      labels: [
+        "Front Door and WAF",
+        "App Service",
+        "PostgreSQL",
+        "Blob Storage",
+        "Redis",
+        "Monitoring",
+        "Key Vault + Network"
+      ],
+      pilot: [0, 70, 100, 10, 0, 90, 50],
+      growth: [90, 220, 180, 20, 55, 140, 55],
+      upper: [160, 460, 320, 45, 120, 250, 105]
+    };
+
+    function setup(canvas, h = 330) {
+      const dpr = window.devicePixelRatio || 1;
+      const w = canvas.clientWidth || 600;
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return { ctx, width: w, height: h };
+    }
+
+    function drawScenario() {
+      const canvas = document.getElementById("scenario");
+      const { ctx, width, height } = setup(canvas, 330);
+      const pad = { left: 62, right: 18, top: 26, bottom: 52 };
+      const chartW = width - pad.left - pad.right;
+      const chartH = height - pad.top - pad.bottom;
+      const max = 1600;
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.strokeStyle = "#d3deef";
+      ctx.fillStyle = "#2b3f63";
+      ctx.font = "12px Segoe UI";
+
+      for (let i = 0; i <= 4; i += 1) {
+        const y = pad.top + (chartH / 4) * i;
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(width - pad.right, y);
+        ctx.stroke();
+        ctx.fillText(fmt.format(max - (max / 4) * i), 8, y + 4);
+      }
+
+      const slot = chartW / scenario.values.length;
+      const barW = slot * 0.56;
+
+      scenario.values.forEach((v, i) => {
+        const h = (v / max) * chartH;
+        const x = pad.left + slot * i + (slot - barW) / 2;
+        const y = pad.top + chartH - h;
+        ctx.fillStyle = scenario.colors[i];
+        ctx.fillRect(x, y, barW, h);
+        ctx.fillStyle = "#263b60";
+        ctx.fillText(fmt.format(v), x, y - 7);
+        ctx.fillStyle = "#1f2d46";
+        ctx.fillText(scenario.labels[i], x, height - 18);
+      });
+
+      ctx.fillStyle = "#223a64";
+      ctx.font = "600 13px Segoe UI";
+      ctx.fillText("Starter Monthly Runtime by Scenario", pad.left, 16);
+    }
+
+    function drawCategory() {
+      const canvas = document.getElementById("category");
+      const { ctx, width, height } = setup(canvas, 330);
+      const pad = { left: 185, right: 16, top: 34, bottom: 18 };
+      const chartW = width - pad.left - pad.right;
+      const chartH = height - pad.top - pad.bottom;
+      const rows = category.labels.length;
+      const rowH = chartH / rows;
+
+      const series = [
+        { name: "Pilot", color: "#0a5bd8", values: category.pilot },
+        { name: "Growth", color: "#0b8f7a", values: category.growth },
+        { name: "Upper", color: "#c98600", values: category.upper }
+      ];
+
+      const max = Math.max(...category.upper);
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#223a64";
+      ctx.font = "600 13px Segoe UI";
+      ctx.fillText("Category Costs Across Starter Scenarios", 12, 16);
+
+      series.forEach((s, i) => {
+        const lx = 12 + i * 90;
+        ctx.fillStyle = s.color;
+        ctx.fillRect(lx, 24, 14, 8);
+        ctx.fillStyle = "#2d4065";
+        ctx.font = "12px Segoe UI";
+        ctx.fillText(s.name, lx + 20, 32);
+      });
+
+      ctx.strokeStyle = "#e5ebf7";
+      for (let t = 0; t <= 4; t += 1) {
+        const x = pad.left + (chartW / 4) * t;
+        ctx.beginPath();
+        ctx.moveTo(x, pad.top);
+        ctx.lineTo(x, height - pad.bottom);
+        ctx.stroke();
+      }
+
+      category.labels.forEach((label, r) => {
+        const yBase = pad.top + r * rowH + 8;
+        ctx.fillStyle = "#1f304d";
+        ctx.font = "11px Segoe UI";
+        ctx.fillText(label, 8, yBase + 8);
+
+        series.forEach((s, si) => {
+          const v = s.values[r];
+          const w = (v / max) * chartW;
+          const y = yBase + si * 8;
+          ctx.fillStyle = s.color;
+          ctx.fillRect(pad.left, y, w, 6);
+          ctx.fillStyle = "#2a3d62";
+          ctx.fillText(String(v), pad.left + w + 4, y + 6);
+        });
+      });
+    }
+
+    function renderAll() {
+      drawScenario();
+      drawCategory();
+    }
+
+    window.addEventListener("load", renderAll);
+    window.addEventListener("resize", renderAll);
+  </script>
+</body>
+</html>
