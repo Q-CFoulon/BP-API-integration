@@ -1,169 +1,163 @@
-# Proposal: Azure Enterprise Multi-Tenant React Web Platform on Azure
+# Proposal: Enterprise SecOps Platform on Azure (50-300 Tenants)
 
 Date: 2026-05-13
 
 ## Executive Summary
 
-- Retain React and TypeScript for the frontend and avoid a near-term Blazor rewrite to reduce delivery risk and timeline.
-- Introduce a dedicated backend integration API so third-party security integrations no longer run in the browser.
-- Deploy a hybrid multi-tenant model: shared application platform for all tenants, with optional dedicated data isolation for high-sensitivity tenants.
-- Use Azure PaaS-first services to meet enterprise security, scale, and governance expectations while targeting a monthly runtime cost below $5,000.
+This enterprise proposal adopts the SecOps App Revised model as the target production pattern: Entra ID Application Proxy at the identity edge, private-only application hosting, strict Dev and Prod segregation, and ISO 27001:2022-aligned controls. The platform unifies Blackpoint API case operations, Defender XDR context, and AI-assisted triage in one operational surface, while preserving a reusable framework for future AI workload onboarding.
+
+## Leadership Output Snapshot
+
+| Leadership Output | Enterprise Proposal Position |
+| --- | --- |
+| Business value | API-driven case workflows replacing portal-checking, single-pane analyst view, and AI-assisted triage and reporting |
+| Strategic outcomes | Zero inbound public exposure, reusable AI production framework, VRM-owned connector patching model, and audit-ready telemetry |
+| Headline economics | One-time build baseline: $9,360 (120 hours). Recurring annual baseline from revised guidance: $10,268/year before tenant-scale uplift |
+| Operational target | Maintain runtime below $5,000/month at 50-300 tenants via phased scale triggers and budget guardrails |
+| Decision points | VRM patch ownership, Event Hub forwarding to Quisitive IT, and go-live approval for POC port to App Service and Function Apps |
 
 ## Goals and Constraints
 
 - Tenants: 50 to 300.
 - Daily active users: 5,000 to 50,000.
-- Primary region: East US, single-region initial deployment.
-- Budget target: under $5,000 per month for runtime services.
-- Enterprise requirements: strong identity and RBAC, tenant isolation controls, auditability, observability, and CI/CD governance.
+- Region: East US primary, single-region initial deployment with resilience controls.
+- Security posture: zero-trust identity edge, private endpoints, and ISO 27001:2022-aligned control mapping.
+- Budget target: remain below $5,000/month runtime through staged scale triggers.
 
-## Recommended Architecture
+## SecOps Revised Architecture Alignment
 
-### Edge and Access Layer
+### Identity and Access Perimeter
 
-- Azure Front Door Standard with WAF policy and managed rule sets.
-- Single public entry point with TLS termination, routing, and basic global performance optimization.
+- Entra ID Application Proxy is the front door for user access.
+- Pre-authentication, Conditional Access, MFA, and Identity Protection are enforced before requests reach Azure workloads.
+- No public inbound application surface is exposed.
 
-### Application Layer
+### Network and Environment Topology
 
-- App Service (Linux) for frontend web app.
-- Separate App Service (Linux) for backend integration API.
-- Managed identity enabled for service-to-service authentication.
+- Hub-spoke virtual network model with NAT Gateway egress.
+- Separate Dev and Prod subscriptions, VNets, connector groups, and Entra enterprise applications.
+- App Proxy connectors run on dedicated Windows Server VMs (B2ms class), outbound 443 only.
 
-### Data Layer
+### Application and Integration Layer
 
-- Azure Database for PostgreSQL Flexible Server for structured tenant and workflow data.
-- Azure Blob Storage for evidence, report exports, and archived artifacts.
-- Optional Azure Cache for Redis for hot-path session and aggregation caching.
+- App Service hosts the unified web platform.
+- Function Apps (Windows PowerShell and Linux Python) run integration and automation workloads.
+- Existing POC capabilities are ported to managed Azure runtime targets.
 
-### Security and Secrets
+### Data, Secrets, and Private Connectivity
 
-- Microsoft Entra ID for authentication (OIDC).
-- App roles and tenant-scoped authorization claims.
-- Azure Key Vault for secrets, certificates, and key material.
+- Azure SQL or PostgreSQL for case and correlation data.
+- Blob Storage for evidence and reporting artifacts.
+- Key Vault with managed identity access.
+- Private Endpoints for App Service, database, Key Vault, and Storage.
 
-### Observability and Operations
+### Monitoring, Security, and Audit
 
-- Application Insights and Log Analytics workspace for telemetry, alerting, and diagnostics.
-- Cost Management budgets and alerts with service-level guardrails.
+- Defender for Cloud enabled with CSPM Standard and workload protections.
+- Diagnostic Settings and Entra logs forwarded through Event Hub to Quisitive IT.
+- Central Log Analytics and Application Insights with retention and archive policy.
 
 ## Multi-Tenancy Strategy
 
 ### Shared Tenant Model (Default)
 
-- All tenants share app services.
-- Tenant context enforced from identity claims and API middleware.
-- Data partitioned by tenant_id with strict query enforcement and role checks.
+- Shared app tier with tenant_id partitioning and strict policy enforcement.
+- Unified case and triage views across customer tenants.
+- Least-privilege RBAC and tenant-scoped authorization checks in all API paths.
 
-### Isolated Tenant Model (Premium or Regulated Tenants)
+### Isolated Tenant Model (Premium or Regulated)
 
-- Dedicated PostgreSQL database or dedicated compute tier per selected tenant.
-- Optional dedicated storage account container namespace and encryption policy set.
-- Same application code path with tenant policy-driven routing.
+- Dedicated data tier for selected tenants (database and storage segmentation).
+- Optional dedicated compute pool for high-sensitivity workloads.
+- Same control plane and observability model to preserve operational consistency.
 
-## Recommended Azure Resources
+## Recommended Enterprise Resources
 
-| Layer | Azure Service | Baseline Recommendation | Scale Guidance |
+| Layer | Azure Service | Enterprise Baseline | Scale Guidance |
 | --- | --- | --- | --- |
-| Edge | Front Door Standard + WAF | 1 profile, 1 endpoint, WAF managed rules | Add custom rules per tenant risk profile |
-| Web frontend | App Service Plan Linux | P1v3, 2 instances | Scale to 4 to 8 instances based on CPU and request latency |
-| Backend API | App Service Plan Linux | P1v3, 2 instances | Scale to 6 to 10 instances for ingestion spikes |
-| Structured data | PostgreSQL Flexible Server | General Purpose, 2 to 4 vCores | Scale to 8+ vCores, tune storage IOPS and backups |
-| Unstructured data | Blob Storage | Hot tier for active data, Cool tier for aging data | Lifecycle rules for cost control |
-| Cache | Azure Cache for Redis | Standard C1 | Scale to C2 or C3 based on hit ratio and latency |
-| Secrets | Key Vault | Standard | Separate vault per environment |
-| Monitoring | App Insights + Log Analytics | Workspace-based telemetry | Increase sampling and retention controls with load |
+| Identity edge | Entra ID App Proxy | 2 Prod connectors + 1 Dev connector | Add connector pair per significant concurrency growth |
+| Hub network | Hub VNet + NAT Gateway + Private DNS | Shared egress and private resolution | Introduce Azure Firewall Basic if FQDN egress controls are required |
+| Web and API | App Service Plan Linux | P1v3, 2 instances | Scale to 4-8 instances by CPU and p95 latency |
+| Automation | Function Apps (Windows + Linux) | Consumption baseline | Move heavy jobs to Premium plans as execution pressure grows |
+| Structured data | PostgreSQL Flexible Server or Azure SQL | General Purpose / S-tier baseline | Scale vCores and IOPS at sustained >60% utilization |
+| Unstructured data | Blob Storage | Hot + lifecycle to Cool/Archive | Add immutable policies for audit containers |
+| Secrets | Key Vault | RBAC mode + private endpoint | Enforce purge protection in Prod |
+| Security posture | Defender for Cloud | CSPM + workload protections | Keep parity between Dev and Prod allocations |
+| Telemetry | App Insights + Log Analytics + Event Hub | Centralized diagnostics forwarding | Increase retention and archive periods for compliance demand |
 
-## Enterprise Landing Zone and Organization Structure
+## Enterprise Delivery Model (SecOps Revised)
 
-### Management Group Structure
+1. Platform foundation: create repository structure, environment gates, and policy baseline.
+1. AI-assisted IaC and policy authoring: generate, review, and harden Bicep or Terraform plus Azure Policy initiative.
+1. Hub-spoke deployment: establish hub networking, spoke VNets, peering, UDRs, NAT, and Private DNS.
+1. Data and secret plane: deploy database, storage, Key Vault, and Private Endpoints with public access disabled.
+1. App Proxy deployment: provision connector VMs, install connectors, and bind environment-specific connector groups.
+1. Entra publish and access controls: configure App Proxy enterprise applications, Conditional Access, and risk policies.
+1. Workload deployment: deploy App Service and Function Apps; port POC logic to managed runtime.
+1. Observability and governance: enable Defender plans, Diagnostic Settings, Event Hub forwarding, and alerting.
+1. CI and CD hardening: enforce Dev auto-deploy, Prod approval gates, and smoke testing.
+1. Readiness and cutover: perform tabletop security tests, failover tests, and go-live approval.
 
-- Root
-- Platform
-- Security
-- Production
-- NonProduction
+## Leadership Economics View
 
-### Subscription Model
+### Baseline Financial Outputs from SecOps Revised Guidance
 
-- Shared-Platform subscription: Front Door, DNS, shared network, shared monitoring workspace.
-- Identity-Security subscription: Key Vault governance, policy, and identity controls.
-- App-Prod subscription: production app services, production database, production storage.
-- App-NonProd subscription: dev and stage environments.
+| Metric | Baseline Value |
+| --- | --- |
+| One-time build | $9,360 |
+| Recurring annual cost | $10,268/year |
+| Annual labor savings (current load) | $36,864/year |
+| Payback period | ~4.2 months baseline |
+| Year-1 ROI | ~88% baseline |
+| Year-2+ ROI | ~259% baseline |
 
-### Governance Controls
+### Enterprise Runtime Envelope (50-300 Tenants)
 
-- Azure Policy initiative for tagging, TLS minimums, private endpoint policies, and diagnostic settings.
-- Role assignment by Entra groups, not direct user assignments.
-- Mandatory budget alerts at 60 percent, 80 percent, and 95 percent.
-
-## Security and Compliance Controls
-
-- Entra ID with conditional access and MFA for administrative access.
-- Role-based and tenant-scoped authorization checks in backend API.
-- Secrets removed from client code and centralized in Key Vault.
-- End-to-end audit events for tenant actions, override decisions, and analyst workflows.
-- WAF and API rate limiting for abuse and burst protection.
-- Retention policy matrix for operational logs, audit logs, and evidence artifacts.
-
-## Cost Proposal (Monthly Runtime Estimate)
-
-Assumptions:
-
-- East US pricing.
-- Single region, no active-active DR.
-- Costs include runtime infrastructure and monitoring, exclude one-time engineering labor.
-
-| Scenario | Tenant Count | DAU | Estimated Monthly Cost |
+| Scenario | Tenant Count | DAU | Monthly Runtime Estimate |
 | --- | --- | --- | --- |
-| Low | 50 | 5,000 | $1,100 |
-| Target | 150 | 20,000 | $2,600 |
-| Upper Growth | 300 | 50,000 | $4,800 |
-
-Cost breakdown by category:
+| Low | 50 | 5,000 | $1,450 |
+| Target | 150 | 20,000 | $3,250 |
+| Upper Growth | 300 | 50,000 | $4,900 |
 
 | Category | Low | Target | Upper Growth |
 | --- | --- | --- | --- |
-| Front Door and WAF | $90 | $170 | $320 |
-| App Service (frontend + API) | $360 | $820 | $1,500 |
-| PostgreSQL Flexible Server | $120 | $360 | $760 |
-| Blob Storage | $40 | $130 | $320 |
-| Redis Cache | $60 | $180 | $380 |
-| Monitoring and logs | $100 | $320 | $700 |
-| Key Vault and security ops | $40 | $70 | $120 |
-| Network egress and misc platform overhead | $290 | $550 | $700 |
-| Total | $1,100 | $2,600 | $4,800 |
+| Entra App Proxy connectors and edge controls | $210 | $360 | $520 |
+| App Service and Functions | $430 | $1,150 | $1,780 |
+| Database and storage | $210 | $620 | $960 |
+| Security and telemetry (Defender, Logs, Event Hub) | $330 | $760 | $1,140 |
+| Network and platform overhead | $270 | $360 | $500 |
+| Total | $1,450 | $3,250 | $4,900 |
 
-Pricing reference notes used in planning:
+## Governance, Security, and ISO Alignment
 
-- App Service sample rates: B1 $0.017/hour, S1 $0.095/hour, P1v3 $0.155/hour.
-- Front Door Standard base fee includes fixed monthly profile cost plus request and transfer meters.
-- Blob hot storage planning rate around $0.0208 to $0.021 per GB-month.
-- Application Insights ingestion overage around $2.30 per GB.
+- Entra ID-only authentication with Conditional Access and MFA.
+- No public inbound application access; connector outbound 443 model.
+- Managed identities and Key Vault for secret hygiene.
+- Private endpoint access for all critical data plane services.
+- Defender CSPM and workload protections enabled in both environments.
+- Diagnostic forwarding to Quisitive IT for centralized monitoring.
+- Direct support for ISO-aligned controls including access control, secure authentication, logging, monitoring, network segregation, and Dev/Prod separation.
 
-## Delivery Roadmap
+## Decision Points for Leadership Approval
 
-1. Phase 1 (Weeks 1 to 2): platform design sign-off, subscription and policy setup, CI/CD baseline.
-1. Phase 2 (Weeks 3 to 5): backend integration API extraction from browser services.
-1. Phase 3 (Weeks 6 to 8): Entra ID, RBAC, tenant policy enforcement, and data persistence migration.
-1. Phase 4 (Weeks 9 to 10): observability hardening, load tests, and cost guardrail tuning.
-1. Phase 5 (Weeks 11 to 12): pilot tenant rollout, operational handoff, and production cutover.
+1. Confirm Spyglass VRM team ownership of App Proxy connector VM patching and evidence reporting.
+1. Confirm Quisitive IT Event Hub integration readiness for Dev and Prod telemetry.
+1. Approve POC migration timeline to App Service and Function Apps with production go-live window.
 
 ## Scope Boundaries
 
 ### Included
 
-- Azure architecture recommendation.
-- Tenant strategy and enterprise governance structure.
-- Runtime cost envelope and scaling guidance.
-- Delivery phases and readiness criteria.
+- SecOps revised architecture alignment for identity edge, private networking, and telemetry.
+- Enterprise delivery sequence and operating model.
+- Leadership-oriented output package: economics, ROI baseline, and decision points.
 
 ### Excluded
 
-- Full implementation code changes.
-- Final Bicep templates and deployment execution.
-- Multi-region disaster recovery build-out.
+- Full implementation code and IaC module artifacts.
+- Multi-region active-active disaster recovery build-out.
+- Final production runbooks and incident playbooks.
 
 ## Final Recommendation
 
-Proceed with React plus backend API modernization, deploy on App Service with Front Door and WAF, enforce Entra ID and tenant-scoped authorization, and adopt PostgreSQL plus Blob Storage under a hybrid multi-tenant data policy. This path provides the fastest enterprise-ready outcome while staying within the stated budget target when cost guardrails are applied.
+Proceed with the SecOps Revised architecture as the enterprise target state: Entra App Proxy identity edge, private-only service connectivity, strict Dev and Prod segregation, and reusable AI production framework controls. This delivers the leadership outputs requested while preserving a practical cost envelope for 50-300 tenant growth.
