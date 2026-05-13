@@ -1,0 +1,782 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Azure Enterprise Multi-Tenant Proposal</title>
+  <style>
+    :root {
+      --bg: #eef3f9;
+      --surface: #ffffff;
+      --ink: #1d2635;
+      --muted: #4f5c73;
+      --line: #d6deea;
+      --accent: #0a5bd8;
+      --accent-2: #0a8f6a;
+      --accent-3: #d37d00;
+      --shadow: 0 8px 24px rgba(18, 38, 63, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--ink);
+      background: linear-gradient(180deg, #f9fbff 0%, var(--bg) 100%);
+      line-height: 1.55;
+    }
+
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #0e2a57 0%, #0a5bd8 65%, #2f8fff 100%);
+      color: #ffffff;
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 1.8rem;
+    }
+
+    .hero p {
+      margin: 0;
+      color: #dce9ff;
+    }
+
+    .section {
+      background: var(--surface);
+      border-radius: 14px;
+      margin-top: 18px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+      border: 1px solid #e7edf7;
+    }
+
+    .section h2 {
+      margin-top: 0;
+      font-size: 1.35rem;
+    }
+
+    .section h3 {
+      margin-bottom: 8px;
+      font-size: 1.05rem;
+      color: #223554;
+    }
+
+    .section ul,
+    .section ol {
+      margin-top: 8px;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 18px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: #fcfdff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .kpi {
+      background: #f4f8ff;
+      border: 1px solid #cfdcf7;
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .kpi .label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .kpi .value {
+      margin-top: 4px;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #0f2f64;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.95rem;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #edf3fe;
+      color: #1d3764;
+      font-weight: 700;
+    }
+
+    tr:nth-child(even) td {
+      background: #fafcff;
+    }
+
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 12px;
+    }
+
+    canvas {
+      width: 100%;
+      height: 340px;
+      display: block;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    .architecture-svg {
+      width: 100%;
+      height: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #ffffff;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .pill {
+      display: inline-block;
+      margin-right: 8px;
+      margin-top: 6px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: #ecf3ff;
+      border: 1px solid #c9daf8;
+      color: #1d3a6e;
+      font-size: 0.82rem;
+    }
+
+    @media (max-width: 980px) {
+      .split,
+      .cards,
+      .chart-grid,
+      .kpi-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero h1 {
+        font-size: 1.45rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <h1>Proposal: Azure Enterprise Multi-Tenant React Web Platform on Azure</h1>
+      <p>Date: 2026-05-13</p>
+      <div>
+        <span class="pill">React + TypeScript</span>
+        <span class="pill">Hybrid Multi-Tenant</span>
+        <span class="pill">Budget Target: &lt; $5,000/month</span>
+        <span class="pill">Primary Region: East US</span>
+      </div>
+    </header>
+
+    <section class="section">
+      <h2>Executive Summary</h2>
+      <ul>
+        <li>Retain React and TypeScript for the frontend and avoid a near-term Blazor rewrite to reduce delivery risk and timeline.</li>
+        <li>Introduce a dedicated backend integration API so third-party security integrations no longer run in the browser.</li>
+        <li>Deploy a hybrid multi-tenant model: shared application platform for all tenants, with optional dedicated data isolation for high-sensitivity tenants.</li>
+        <li>Use Azure PaaS-first services to meet enterprise security, scale, and governance expectations while targeting a monthly runtime cost below $5,000.</li>
+      </ul>
+
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="label">Tenants</div>
+          <div class="value">50 to 300</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Daily Active Users</div>
+          <div class="value">5,000 to 50,000</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Region</div>
+          <div class="value">East US</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Upper Growth Runtime</div>
+          <div class="value">$4,800</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Recommended Architecture</h2>
+      <div class="split">
+        <div>
+          <h3>Edge and Access Layer</h3>
+          <ul>
+            <li>Azure Front Door Standard with WAF policy and managed rule sets.</li>
+            <li>Single public entry point with TLS termination, routing, and global performance optimization.</li>
+          </ul>
+
+          <h3>Application Layer</h3>
+          <ul>
+            <li>App Service (Linux) for frontend web app.</li>
+            <li>Separate App Service (Linux) for backend integration API.</li>
+            <li>Managed identity enabled for service-to-service authentication.</li>
+          </ul>
+
+          <h3>Data Layer</h3>
+          <ul>
+            <li>Azure Database for PostgreSQL Flexible Server for structured tenant and workflow data.</li>
+            <li>Azure Blob Storage for evidence, report exports, and archived artifacts.</li>
+            <li>Optional Azure Cache for Redis for hot-path session and aggregation caching.</li>
+          </ul>
+
+          <h3>Security and Operations</h3>
+          <ul>
+            <li>Microsoft Entra ID (OIDC), app roles, and tenant-scoped claims.</li>
+            <li>Azure Key Vault for secrets and certificates.</li>
+            <li>Application Insights and Log Analytics for telemetry and diagnostics.</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h3>Architecture Flow Graph</h3>
+          <svg class="architecture-svg" viewBox="0 0 740 460" role="img" aria-label="Architecture flow graph">
+            <defs>
+              <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+                <polygon points="0 0, 8 4, 0 8" fill="#3d5a92"></polygon>
+              </marker>
+            </defs>
+
+            <rect x="260" y="24" width="220" height="56" rx="8" fill="#dce8ff" stroke="#6f8ec8"></rect>
+            <text x="370" y="57" text-anchor="middle" font-size="14" fill="#1b355f">Azure Front Door + WAF</text>
+
+            <rect x="72" y="130" width="250" height="64" rx="8" fill="#e5f4ff" stroke="#74a9cc"></rect>
+            <text x="197" y="168" text-anchor="middle" font-size="14" fill="#184160">App Service: Frontend</text>
+
+            <rect x="418" y="130" width="250" height="64" rx="8" fill="#e8f8f1" stroke="#6ea88a"></rect>
+            <text x="543" y="168" text-anchor="middle" font-size="14" fill="#1f4e39">App Service: Backend API</text>
+
+            <rect x="72" y="258" width="186" height="64" rx="8" fill="#fff1de" stroke="#cba062"></rect>
+            <text x="165" y="296" text-anchor="middle" font-size="13" fill="#5b3b14">PostgreSQL Flexible</text>
+
+            <rect x="278" y="258" width="186" height="64" rx="8" fill="#fff1de" stroke="#cba062"></rect>
+            <text x="371" y="296" text-anchor="middle" font-size="13" fill="#5b3b14">Blob Storage</text>
+
+            <rect x="484" y="258" width="186" height="64" rx="8" fill="#fff1de" stroke="#cba062"></rect>
+            <text x="577" y="296" text-anchor="middle" font-size="13" fill="#5b3b14">Redis (Optional)</text>
+
+            <rect x="175" y="362" width="184" height="64" rx="8" fill="#efeaff" stroke="#8c79bf"></rect>
+            <text x="267" y="399" text-anchor="middle" font-size="13" fill="#3f2f65">Key Vault + Entra ID</text>
+
+            <rect x="381" y="362" width="184" height="64" rx="8" fill="#efeaff" stroke="#8c79bf"></rect>
+            <text x="473" y="399" text-anchor="middle" font-size="13" fill="#3f2f65">App Insights + Log Analytics</text>
+
+            <line x1="370" y1="80" x2="197" y2="130" stroke="#3d5a92" stroke-width="2" marker-end="url(#arrow)"></line>
+            <line x1="370" y1="80" x2="543" y2="130" stroke="#3d5a92" stroke-width="2" marker-end="url(#arrow)"></line>
+            <line x1="197" y1="194" x2="543" y2="194" stroke="#3d5a92" stroke-width="2" marker-end="url(#arrow)"></line>
+
+            <line x1="543" y1="194" x2="165" y2="258" stroke="#3d5a92" stroke-width="2" marker-end="url(#arrow)"></line>
+            <line x1="543" y1="194" x2="371" y2="258" stroke="#3d5a92" stroke-width="2" marker-end="url(#arrow)"></line>
+            <line x1="543" y1="194" x2="577" y2="258" stroke="#3d5a92" stroke-width="2" marker-end="url(#arrow)"></line>
+
+            <line x1="543" y1="194" x2="267" y2="362" stroke="#3d5a92" stroke-width="2" marker-end="url(#arrow)"></line>
+            <line x1="543" y1="194" x2="473" y2="362" stroke="#3d5a92" stroke-width="2" marker-end="url(#arrow)"></line>
+          </svg>
+          <p class="small">Graph shows the primary service flow from edge routing to app, data, security, and observability services.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Multi-Tenancy Strategy</h2>
+      <div class="cards">
+        <div class="card">
+          <h3>Shared Tenant Model (Default)</h3>
+          <ul>
+            <li>All tenants share app services.</li>
+            <li>Tenant context enforced from identity claims and API middleware.</li>
+            <li>Data partitioned by tenant_id with strict query enforcement and role checks.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Isolated Tenant Model (Premium / Regulated)</h3>
+          <ul>
+            <li>Dedicated PostgreSQL database or dedicated compute tier per selected tenant.</li>
+            <li>Optional dedicated storage namespace and encryption policy set.</li>
+            <li>Same application path with policy-based tenant routing.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Recommended Azure Resources</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Layer</th>
+            <th>Azure Service</th>
+            <th>Baseline Recommendation</th>
+            <th>Scale Guidance</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Edge</td>
+            <td>Front Door Standard + WAF</td>
+            <td>1 profile, 1 endpoint, WAF managed rules</td>
+            <td>Add custom rules per tenant risk profile</td>
+          </tr>
+          <tr>
+            <td>Web frontend</td>
+            <td>App Service Plan Linux</td>
+            <td>P1v3, 2 instances</td>
+            <td>Scale to 4 to 8 instances based on CPU and request latency</td>
+          </tr>
+          <tr>
+            <td>Backend API</td>
+            <td>App Service Plan Linux</td>
+            <td>P1v3, 2 instances</td>
+            <td>Scale to 6 to 10 instances for ingestion spikes</td>
+          </tr>
+          <tr>
+            <td>Structured data</td>
+            <td>PostgreSQL Flexible Server</td>
+            <td>General Purpose, 2 to 4 vCores</td>
+            <td>Scale to 8+ vCores, tune storage IOPS and backups</td>
+          </tr>
+          <tr>
+            <td>Unstructured data</td>
+            <td>Blob Storage</td>
+            <td>Hot tier for active data, Cool tier for aging data</td>
+            <td>Lifecycle rules for cost control</td>
+          </tr>
+          <tr>
+            <td>Cache</td>
+            <td>Azure Cache for Redis</td>
+            <td>Standard C1</td>
+            <td>Scale to C2 or C3 based on hit ratio and latency</td>
+          </tr>
+          <tr>
+            <td>Secrets</td>
+            <td>Key Vault</td>
+            <td>Standard</td>
+            <td>Separate vault per environment</td>
+          </tr>
+          <tr>
+            <td>Monitoring</td>
+            <td>App Insights + Log Analytics</td>
+            <td>Workspace-based telemetry</td>
+            <td>Increase sampling and retention controls with load</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>Enterprise Landing Zone and Organization Structure</h2>
+      <div class="split">
+        <div>
+          <h3>Management Group Structure</h3>
+          <ul>
+            <li>Root</li>
+            <li>Platform</li>
+            <li>Security</li>
+            <li>Production</li>
+            <li>NonProduction</li>
+          </ul>
+
+          <h3>Subscription Model</h3>
+          <ul>
+            <li>Shared-Platform: Front Door, DNS, shared network, shared monitoring workspace.</li>
+            <li>Identity-Security: Key Vault governance, policy, and identity controls.</li>
+            <li>App-Prod: production app services, production database, production storage.</li>
+            <li>App-NonProd: dev and stage environments.</li>
+          </ul>
+
+          <h3>Governance Controls</h3>
+          <ul>
+            <li>Azure Policy for tagging, TLS minimums, private endpoint policies, and diagnostics.</li>
+            <li>Role assignment by Entra groups, not direct user assignments.</li>
+            <li>Mandatory budget alerts at 60 percent, 80 percent, and 95 percent.</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h3>Security and Compliance Controls</h3>
+          <ul>
+            <li>Entra ID with conditional access and MFA for administrative access.</li>
+            <li>Role-based and tenant-scoped authorization checks in backend API.</li>
+            <li>Secrets removed from client code and centralized in Key Vault.</li>
+            <li>End-to-end audit events for tenant actions, override decisions, and analyst workflows.</li>
+            <li>WAF and API rate limiting for abuse and burst protection.</li>
+            <li>Retention policy matrix for operational logs, audit logs, and evidence artifacts.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Cost Proposal (Monthly Runtime Estimate)</h2>
+      <p><strong>Assumptions:</strong> East US pricing, single region, no active-active DR, runtime infrastructure and monitoring only.</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Scenario</th>
+            <th>Tenant Count</th>
+            <th>DAU</th>
+            <th>Estimated Monthly Cost</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Low</td>
+            <td>50</td>
+            <td>5,000</td>
+            <td>$1,100</td>
+          </tr>
+          <tr>
+            <td>Target</td>
+            <td>150</td>
+            <td>20,000</td>
+            <td>$2,600</td>
+          </tr>
+          <tr>
+            <td>Upper Growth</td>
+            <td>300</td>
+            <td>50,000</td>
+            <td>$4,800</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="chart-grid">
+        <div class="card">
+          <h3>Chart 1: Monthly Cost by Scenario</h3>
+          <canvas id="scenarioChart"></canvas>
+        </div>
+        <div class="card">
+          <h3>Chart 2: Cost by Category and Scenario</h3>
+          <canvas id="categoryChart"></canvas>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Low</th>
+            <th>Target</th>
+            <th>Upper Growth</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Front Door and WAF</td><td>$90</td><td>$170</td><td>$320</td></tr>
+          <tr><td>App Service (frontend + API)</td><td>$360</td><td>$820</td><td>$1,500</td></tr>
+          <tr><td>PostgreSQL Flexible Server</td><td>$120</td><td>$360</td><td>$760</td></tr>
+          <tr><td>Blob Storage</td><td>$40</td><td>$130</td><td>$320</td></tr>
+          <tr><td>Redis Cache</td><td>$60</td><td>$180</td><td>$380</td></tr>
+          <tr><td>Monitoring and logs</td><td>$100</td><td>$320</td><td>$700</td></tr>
+          <tr><td>Key Vault and security ops</td><td>$40</td><td>$70</td><td>$120</td></tr>
+          <tr><td>Network egress and platform overhead</td><td>$290</td><td>$550</td><td>$700</td></tr>
+          <tr><td><strong>Total</strong></td><td><strong>$1,100</strong></td><td><strong>$2,600</strong></td><td><strong>$4,800</strong></td></tr>
+        </tbody>
+      </table>
+
+      <p class="small">Reference rates used in planning: B1 $0.017/hour, S1 $0.095/hour, P1v3 $0.155/hour, Blob hot storage around $0.0208 to $0.021/GB-month, and Application Insights overage around $2.30/GB.</p>
+    </section>
+
+    <section class="section">
+      <h2>Delivery Roadmap and Timeline Graph</h2>
+      <ol>
+        <li>Phase 1 (Weeks 1 to 2): platform design sign-off, subscription and policy setup, CI/CD baseline.</li>
+        <li>Phase 2 (Weeks 3 to 5): backend integration API extraction from browser services.</li>
+        <li>Phase 3 (Weeks 6 to 8): Entra ID, RBAC, tenant policy enforcement, and data persistence migration.</li>
+        <li>Phase 4 (Weeks 9 to 10): observability hardening, load tests, and cost guardrail tuning.</li>
+        <li>Phase 5 (Weeks 11 to 12): pilot tenant rollout, operational handoff, and production cutover.</li>
+      </ol>
+
+      <svg class="architecture-svg" viewBox="0 0 980 260" role="img" aria-label="Delivery timeline graph">
+        <rect x="0" y="0" width="980" height="260" fill="#ffffff"></rect>
+        <line x1="130" y1="40" x2="940" y2="40" stroke="#9bb0d1"></line>
+        <line x1="130" y1="80" x2="940" y2="80" stroke="#9bb0d1"></line>
+        <line x1="130" y1="120" x2="940" y2="120" stroke="#9bb0d1"></line>
+        <line x1="130" y1="160" x2="940" y2="160" stroke="#9bb0d1"></line>
+        <line x1="130" y1="200" x2="940" y2="200" stroke="#9bb0d1"></line>
+
+        <text x="16" y="46" font-size="13" fill="#2d456f">Phase 1</text>
+        <text x="16" y="86" font-size="13" fill="#2d456f">Phase 2</text>
+        <text x="16" y="126" font-size="13" fill="#2d456f">Phase 3</text>
+        <text x="16" y="166" font-size="13" fill="#2d456f">Phase 4</text>
+        <text x="16" y="206" font-size="13" fill="#2d456f">Phase 5</text>
+
+        <g fill="#eef3ff" stroke="#9eb2d7">
+          <rect x="130" y="26" width="135" height="28" rx="6"></rect>
+          <rect x="265" y="66" width="202" height="28" rx="6"></rect>
+          <rect x="467" y="106" width="202" height="28" rx="6"></rect>
+          <rect x="669" y="146" width="135" height="28" rx="6"></rect>
+          <rect x="804" y="186" width="136" height="28" rx="6"></rect>
+        </g>
+
+        <text x="150" y="45" font-size="12" fill="#23416f">W1 to W2</text>
+        <text x="300" y="85" font-size="12" fill="#23416f">W3 to W5</text>
+        <text x="500" y="125" font-size="12" fill="#23416f">W6 to W8</text>
+        <text x="700" y="165" font-size="12" fill="#23416f">W9 to W10</text>
+        <text x="835" y="205" font-size="12" fill="#23416f">W11 to W12</text>
+
+        <g stroke="#7f95bc">
+          <line x1="130" y1="220" x2="940" y2="220"></line>
+          <line x1="130" y1="220" x2="130" y2="228"></line>
+          <line x1="265" y1="220" x2="265" y2="228"></line>
+          <line x1="400" y1="220" x2="400" y2="228"></line>
+          <line x1="535" y1="220" x2="535" y2="228"></line>
+          <line x1="670" y1="220" x2="670" y2="228"></line>
+          <line x1="805" y1="220" x2="805" y2="228"></line>
+          <line x1="940" y1="220" x2="940" y2="228"></line>
+        </g>
+
+        <text x="122" y="246" font-size="11" fill="#445a80">W1</text>
+        <text x="258" y="246" font-size="11" fill="#445a80">W3</text>
+        <text x="393" y="246" font-size="11" fill="#445a80">W5</text>
+        <text x="528" y="246" font-size="11" fill="#445a80">W7</text>
+        <text x="663" y="246" font-size="11" fill="#445a80">W9</text>
+        <text x="795" y="246" font-size="11" fill="#445a80">W11</text>
+        <text x="929" y="246" font-size="11" fill="#445a80">W12</text>
+      </svg>
+    </section>
+
+    <section class="section">
+      <h2>Scope Boundaries</h2>
+      <div class="cards">
+        <div class="card">
+          <h3>Included</h3>
+          <ul>
+            <li>Azure architecture recommendation.</li>
+            <li>Tenant strategy and enterprise governance structure.</li>
+            <li>Runtime cost envelope and scaling guidance.</li>
+            <li>Delivery phases and readiness criteria.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Excluded</h3>
+          <ul>
+            <li>Full implementation code changes.</li>
+            <li>Final Bicep templates and deployment execution.</li>
+            <li>Multi-region disaster recovery build-out.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Final Recommendation</h2>
+      <p>
+        Proceed with React plus backend API modernization, deploy on App Service with Front Door and WAF, enforce Entra ID and tenant-scoped authorization, and adopt PostgreSQL plus Blob Storage under a hybrid multi-tenant data policy. This path provides the fastest enterprise-ready outcome while staying within the stated budget target when cost guardrails are applied.
+      </p>
+    </section>
+  </div>
+
+  <script>
+    const money = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0
+    });
+
+    const scenarioData = {
+      labels: ["Low", "Target", "Upper Growth"],
+      values: [1100, 2600, 4800],
+      colors: ["#5d8def", "#0a8f6a", "#d37d00"]
+    };
+
+    const categoryData = {
+      labels: [
+        "Front Door and WAF",
+        "App Service",
+        "PostgreSQL",
+        "Blob Storage",
+        "Redis",
+        "Monitoring",
+        "Key Vault",
+        "Network + Overhead"
+      ],
+      low: [90, 360, 120, 40, 60, 100, 40, 290],
+      target: [170, 820, 360, 130, 180, 320, 70, 550],
+      upper: [320, 1500, 760, 320, 380, 700, 120, 700]
+    };
+
+    function setupCanvas(canvas, forcedHeight = 340) {
+      const dpr = window.devicePixelRatio || 1;
+      const width = canvas.clientWidth || 600;
+      const height = forcedHeight;
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return { ctx, width, height };
+    }
+
+    function drawScenarioChart() {
+      const canvas = document.getElementById("scenarioChart");
+      const { ctx, width, height } = setupCanvas(canvas, 340);
+      const pad = { left: 64, right: 20, top: 28, bottom: 54 };
+      const chartW = width - pad.left - pad.right;
+      const chartH = height - pad.top - pad.bottom;
+      const maxY = 5000;
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#2b3f64";
+      ctx.font = "12px Segoe UI";
+
+      ctx.strokeStyle = "#cdd9ec";
+      ctx.lineWidth = 1;
+      for (let y = 0; y <= 5; y += 1) {
+        const yPos = pad.top + (chartH / 5) * y;
+        ctx.beginPath();
+        ctx.moveTo(pad.left, yPos);
+        ctx.lineTo(width - pad.right, yPos);
+        ctx.stroke();
+        const value = maxY - (maxY / 5) * y;
+        ctx.fillText(money.format(value), 8, yPos + 4);
+      }
+
+      const bars = scenarioData.values.length;
+      const slot = chartW / bars;
+      const barW = slot * 0.55;
+
+      scenarioData.values.forEach((value, i) => {
+        const x = pad.left + slot * i + (slot - barW) / 2;
+        const h = (value / maxY) * chartH;
+        const y = pad.top + chartH - h;
+
+        ctx.fillStyle = scenarioData.colors[i];
+        ctx.fillRect(x, y, barW, h);
+
+        ctx.fillStyle = "#23375d";
+        ctx.fillText(money.format(value), x, y - 8);
+
+        ctx.fillStyle = "#1f2c47";
+        ctx.fillText(scenarioData.labels[i], x, height - 20);
+      });
+
+      ctx.fillStyle = "#223b65";
+      ctx.font = "600 13px Segoe UI";
+      ctx.fillText("Monthly Runtime Cost by Scenario", pad.left, 16);
+    }
+
+    function drawCategoryChart() {
+      const canvas = document.getElementById("categoryChart");
+      const { ctx, width, height } = setupCanvas(canvas, 340);
+      const pad = { left: 220, right: 24, top: 36, bottom: 22 };
+      const chartW = width - pad.left - pad.right;
+      const chartH = height - pad.top - pad.bottom;
+
+      const series = [
+        { name: "Low", color: "#5d8def", values: categoryData.low },
+        { name: "Target", color: "#0a8f6a", values: categoryData.target },
+        { name: "Upper Growth", color: "#d37d00", values: categoryData.upper }
+      ];
+
+      const maxV = Math.max(...categoryData.upper);
+      const rows = categoryData.labels.length;
+      const rowH = chartH / rows;
+      const barH = 6;
+      const gap = 2;
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#223b65";
+      ctx.font = "600 13px Segoe UI";
+      ctx.fillText("Category Costs Across Scenarios", 12, 18);
+
+      series.forEach((s, i) => {
+        const x = 12 + i * 92;
+        ctx.fillStyle = s.color;
+        ctx.fillRect(x, 24, 14, 8);
+        ctx.fillStyle = "#2b3f64";
+        ctx.font = "12px Segoe UI";
+        ctx.fillText(s.name, x + 20, 32);
+      });
+
+      ctx.strokeStyle = "#e3eaf7";
+      for (let t = 0; t <= 4; t += 1) {
+        const x = pad.left + (chartW / 4) * t;
+        ctx.beginPath();
+        ctx.moveTo(x, pad.top);
+        ctx.lineTo(x, height - pad.bottom);
+        ctx.stroke();
+        const v = (maxV / 4) * t;
+        ctx.fillStyle = "#60708e";
+        ctx.font = "11px Segoe UI";
+        ctx.fillText(money.format(v), x - 12, height - 6);
+      }
+
+      categoryData.labels.forEach((label, row) => {
+        const yBase = pad.top + row * rowH + 6;
+        ctx.fillStyle = "#1f2f4d";
+        ctx.font = "11px Segoe UI";
+        ctx.fillText(label, 8, yBase + 10);
+
+        series.forEach((s, idx) => {
+          const value = s.values[row];
+          const w = (value / maxV) * chartW;
+          const y = yBase + idx * (barH + gap);
+          ctx.fillStyle = s.color;
+          ctx.fillRect(pad.left, y, w, barH);
+          ctx.fillStyle = "#2c3f63";
+          ctx.fillText(String(value), pad.left + w + 4, y + barH);
+        });
+      });
+    }
+
+    function renderCharts() {
+      drawScenarioChart();
+      drawCategoryChart();
+    }
+
+    window.addEventListener("resize", renderCharts);
+    window.addEventListener("load", renderCharts);
+  </script>
+</body>
+</html>
