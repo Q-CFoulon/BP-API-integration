@@ -147,6 +147,13 @@ Assumptions:
 - 730-hour month equivalent.
 - List pricing estimate without reservation or negotiated discounts.
 
+### User and Load Assumptions
+
+- **Platform users (application consumers):** 25-75 concurrent analysts within the Quisitive SecOps team, split between onshore (US) and offshore (India) staff. These are the only users placing direct load on application services (App Service, Function Apps, dashboards).
+- **Monitored tenant end-users:** Each managed tenant contains 1K-10K end-users generating logs, alerts, and security activity. These users do not interact with the platform directly; their activity is ingested via API polling and event-driven pipelines without creating application-tier session pressure.
+- **Scaling model:** As the number of managed tenants grows, the Quisitive SecOps team scales onshore and offshore headcount proportionally to match operational demand. Platform user count remains bounded to the analyst team size, not the monitored user population.
+- **Load implication:** Application compute, session, and concurrency sizing targets 25-75 simultaneous users. Ingestion and data-plane sizing targets the aggregate log and alert volume from monitored tenants (driven by tenant count and per-tenant user activity, not by platform user sessions).
+
 ### Production Baseline Estimate
 
 | Component Group | Monthly Cost |
@@ -179,11 +186,13 @@ Assumptions:
 
 ### Enterprise Runtime Envelope (50-300 Tenants)
 
-| Scenario | Tenant Count | DAU | Monthly Runtime Estimate |
-| --- | --- | --- | --- |
-| Low | 50 | 5,000 | $1,450 |
-| Target | 150 | 20,000 | $3,250 |
-| Upper Growth | 300 | 50,000 | $4,900 |
+| Scenario | Tenant Count | Monitored End-Users (log sources) | Platform Users (SecOps analysts) | Monthly Runtime Estimate |
+| --- | --- | --- | --- | --- |
+| Low | 50 | 5,000 | 25-35 | $1,450 |
+| Target | 150 | 20,000 | 40-55 | $3,250 |
+| Upper Growth | 300 | 50,000 | 55-75 | $4,900 |
+
+Note: Monitored end-users generate ingested telemetry and alerts but do not consume application sessions. Platform users (Quisitive SecOps onshore US and offshore India) are the sole consumers of application compute and UI resources.
 
 ## ROI Analysis
 

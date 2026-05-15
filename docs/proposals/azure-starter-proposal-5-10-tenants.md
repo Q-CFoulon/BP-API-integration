@@ -153,13 +153,22 @@ Assumptions:
 - 730-hour equivalent month.
 - Runtime services only; one-time labor excluded.
 
+### User and Load Assumptions
+
+- **Platform users (application consumers):** 25-75 concurrent analysts within the Quisitive SecOps team, split between onshore (US) and offshore (India) staff. These are the only users placing direct load on application services.
+- **Monitored tenant end-users:** Each managed tenant contains 1K-10K end-users generating logs, alerts, and security activity. These users do not interact with the platform directly; their activity is ingested via API polling and event-driven pipelines without creating application-tier session pressure.
+- **Scaling model:** As tenant count grows, the Quisitive SecOps team scales onshore and offshore headcount proportionally to match operational demand. Platform user count remains bounded to the analyst team size, not the monitored user population.
+- **Load implication:** Application compute, session, and concurrency sizing targets 25-75 simultaneous users. Ingestion and data-plane sizing targets the aggregate log and alert volume from monitored tenants.
+
 ### Scenario Envelope
 
-| Scenario | Tenant Count | Active Users | Estimated Monthly Runtime |
-| --- | --- | --- | --- |
-| Pilot | 5 | 1,000 | $520 |
-| Growth Start | 8 | 5,000 | $980 |
-| Upper Starter | 10 | 10,000 | $1,720 |
+| Scenario | Tenant Count | Monitored End-Users (log sources) | Platform Users (SecOps analysts) | Estimated Monthly Runtime |
+| --- | --- | --- | --- | --- |
+| Pilot | 5 | 1,000 | 25-30 | $520 |
+| Growth Start | 8 | 5,000 | 25-40 | $980 |
+| Upper Starter | 10 | 10,000 | 30-50 | $1,720 |
+
+Note: Monitored end-users generate ingested telemetry and alerts but do not consume application sessions. Platform users (Quisitive SecOps onshore US and offshore India) are the sole consumers of application compute and UI resources.
 
 ### Category Breakdown
 

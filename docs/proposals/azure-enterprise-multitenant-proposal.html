@@ -428,6 +428,17 @@
 
     <section class="section">
       <h2>Monthly Cost Estimate</h2>
+
+      <div class="card" style="margin-bottom:20px;">
+        <h3>User and Load Assumptions</h3>
+        <ul>
+          <li><strong>Platform users (application consumers):</strong> 25-75 concurrent analysts within the Quisitive SecOps team, split between onshore (US) and offshore (India) staff. These are the only users placing direct load on application services (App Service, Function Apps, dashboards).</li>
+          <li><strong>Monitored tenant end-users:</strong> Each managed tenant contains 1K-10K end-users generating logs, alerts, and security activity. These users do not interact with the platform directly; their activity is ingested via API polling and event-driven pipelines without creating application-tier session pressure.</li>
+          <li><strong>Scaling model:</strong> As the number of managed tenants grows, the Quisitive SecOps team scales onshore and offshore headcount proportionally to match operational demand. Platform user count remains bounded to the analyst team size, not the monitored user population.</li>
+          <li><strong>Load implication:</strong> Application compute, session, and concurrency sizing targets 25-75 simultaneous users. Ingestion and data-plane sizing targets the aggregate log and alert volume from monitored tenants (driven by tenant count and per-tenant user activity, not by platform user sessions).</li>
+        </ul>
+      </div>
+
       <div class="cards">
         <div class="card">
           <h3>Production Baseline</h3>
@@ -456,14 +467,15 @@
           <h3>Runtime Envelope</h3>
           <table>
             <thead>
-              <tr><th>Scenario</th><th>Tenants</th><th>DAU</th><th>Monthly Runtime</th></tr>
+              <tr><th>Scenario</th><th>Tenants</th><th>Monitored End-Users</th><th>Platform Users (SecOps)</th><th>Monthly Runtime</th></tr>
             </thead>
             <tbody>
-              <tr><td>Low</td><td>50</td><td>5,000</td><td>$1,450</td></tr>
-              <tr><td>Target</td><td>150</td><td>20,000</td><td>$3,250</td></tr>
-              <tr><td>Upper Growth</td><td>300</td><td>50,000</td><td>$4,900</td></tr>
+              <tr><td>Low</td><td>50</td><td>5,000</td><td>25-35</td><td>$1,450</td></tr>
+              <tr><td>Target</td><td>150</td><td>20,000</td><td>40-55</td><td>$3,250</td></tr>
+              <tr><td>Upper Growth</td><td>300</td><td>50,000</td><td>55-75</td><td>$4,900</td></tr>
             </tbody>
           </table>
+          <p style="font-size:0.85rem;color:var(--muted);margin-top:8px;">Monitored end-users generate ingested telemetry and alerts but do not consume application sessions. Platform users (Quisitive SecOps onshore US and offshore India) are the sole consumers of application compute and UI resources.</p>
         </div>
       </div>
     </section>
