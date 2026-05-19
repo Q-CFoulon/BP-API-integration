@@ -4,6 +4,7 @@ import ClosedDetectionsViewer from './ClosedDetectionsViewer';
 import DetectionReportingDashboard from './DetectionReportingDashboard';
 import TenantXdrOwnershipPanel from './TenantXdrOwnershipPanel';
 import UnifiedSecurityPanel from './UnifiedSecurityPanel';
+import RiskInsightsPanel from './RiskInsightsPanel';
 import {
   BlackpointReportRun,
   getReportJsonForTenant,
@@ -12,7 +13,7 @@ import {
 } from '../services/blackpointReports.service';
 
 // ---------------------------------------------------------------------------
-// Types — matching CompassOne API v1.4.0 spec
+// Types — matching CompassOne API v1.7.0 spec
 // ---------------------------------------------------------------------------
 
 interface Tenant {
@@ -198,7 +199,7 @@ const TenantDetailPage: React.FC<TenantDetailProps> = ({ tenant, onBack }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'open' | 'closed' | 'report' | 'xdr' | 'security'>('open');
+  const [activeTab, setActiveTab] = useState<'open' | 'closed' | 'report' | 'xdr' | 'security' | 'risk'>('open');
   const [closedDetections, setClosedDetections] = useState<AlertGroup[]>([]);
   const [closedLoading, setClosedLoading] = useState(false);
   const [closedError, setClosedError] = useState<string | null>(null);
@@ -523,6 +524,12 @@ const TenantDetailPage: React.FC<TenantDetailProps> = ({ tenant, onBack }) => {
               >
                 🔐 Security Feed
               </button>
+              <button
+                className={`tab-button ${activeTab === 'risk' ? 'active' : ''}`}
+                onClick={() => setActiveTab('risk')}
+              >
+                📈 Risk Insights
+              </button>
             </div>
 
             {/* Open Detections Tab */}
@@ -828,6 +835,10 @@ const TenantDetailPage: React.FC<TenantDetailProps> = ({ tenant, onBack }) => {
 
             {activeTab === 'security' && (
               <UnifiedSecurityPanel tenantId={tenant.id} tenantName={tenant.name} />
+            )}
+
+            {activeTab === 'risk' && (
+              <RiskInsightsPanel tenantId={tenant.id} tenantName={tenant.name} />
             )}
           </div>
         )}

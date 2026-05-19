@@ -89,7 +89,7 @@ export interface DetectionTicket {
   created: string;
 }
 
-/** Individual alert inside an alert group */
+/** Individual alert inside an alert group (AM_Alert schema) */
 export interface DetectionAlert {
   id: string;
   customerId: string;
@@ -107,6 +107,18 @@ export interface DetectionAlert {
   ruleName?: string | null;
   threatFramework?: string | null;
   details?: unknown;
+  /** Anomaly binary score (-1 = not applicable) */
+  anomalyBinary?: number | null;
+  /** Anomaly percentile (0-100, -1 = not applicable) */
+  anomalyPercentile?: number | null;
+  /** Traffic light classification object */
+  trafficLight?: Record<string, unknown> | null;
+  /** Reasons array from detection engine */
+  reasons?: Record<string, unknown>[] | null;
+  /** SOC reporting actions taken on this alert */
+  socReportingActions?: Record<string, unknown>[] | null;
+  /** ISO 8601 date-time — when ingested by AI pipeline */
+  aiIngestionDate?: string | null;
   /** ISO 8601 date-time */
   created: string;
   /** ISO 8601 date-time */
@@ -177,7 +189,11 @@ export interface TopDetectionsByThreatEntry {
   percentage: number;
 }
 
-/** Report type options from CompassOne reporting APIs */
+/**
+ * Report type values returned by the API.
+ * NOTE: The /v1/reports list endpoint filter param only accepts 'Cloud' | 'Executive' | 'MDR'.
+ * 'VulnerabilityManagement' may appear in response data but is NOT a valid filter value.
+ */
 export type ReportType = 'Cloud' | 'Executive' | 'MDR' | 'VulnerabilityManagement';
 
 /** Report run metadata from GET /v1/reports */

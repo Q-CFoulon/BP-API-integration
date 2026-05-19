@@ -49,6 +49,11 @@ export interface BlackpointReportListOptions {
   pageSize?: number;
   sortBy?: 'intervalStart';
   sortOrder?: 'asc' | 'desc';
+  /**
+   * Filter by report type. Only 'Cloud', 'Executive', 'MDR' are valid filter values
+   * per the CompassOne API v1.7.0 spec. 'VulnerabilityManagement' may appear in
+   * response data but cannot be used as a query filter.
+   */
   reportType?: 'Cloud' | 'Executive' | 'MDR';
   startDate?: string;
   endDate?: string;
