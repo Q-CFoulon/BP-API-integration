@@ -4,7 +4,6 @@ import ClosedDetectionsViewer from './ClosedDetectionsViewer';
 import DetectionReportingDashboard from './DetectionReportingDashboard';
 import TenantXdrOwnershipPanel from './TenantXdrOwnershipPanel';
 import UnifiedSecurityPanel from './UnifiedSecurityPanel';
-import RiskInsightsPanel from './RiskInsightsPanel';
 import {
   BlackpointReportRun,
   getReportJsonForTenant,
@@ -199,7 +198,7 @@ const TenantDetailPage: React.FC<TenantDetailProps> = ({ tenant, onBack }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'open' | 'closed' | 'native-reports' | 'detection-report' | 'xdr' | 'security' | 'risk'>('open');
+  const [activeTab, setActiveTab] = useState<'open' | 'closed' | 'native-reports' | 'detection-report' | 'xdr' | 'security'>('open');
   const [reportDropdownOpen, setReportDropdownOpen] = useState(false);
   const [closedDetections, setClosedDetections] = useState<AlertGroup[]>([]);
   const [closedLoading, setClosedLoading] = useState(false);
@@ -543,12 +542,6 @@ const TenantDetailPage: React.FC<TenantDetailProps> = ({ tenant, onBack }) => {
               >
                 🔐 Security Feed
               </button>
-              <button
-                className={`tab-button ${activeTab === 'risk' ? 'active' : ''}`}
-                onClick={() => setActiveTab('risk')}
-              >
-                📈 Risk Insights
-              </button>
             </div>
 
             {/* Open Detections Tab */}
@@ -861,10 +854,6 @@ const TenantDetailPage: React.FC<TenantDetailProps> = ({ tenant, onBack }) => {
 
             {activeTab === 'security' && (
               <UnifiedSecurityPanel tenantId={tenant.id} tenantName={tenant.name} />
-            )}
-
-            {activeTab === 'risk' && (
-              <RiskInsightsPanel tenantId={tenant.id} tenantName={tenant.name} />
             )}
           </div>
         )}
