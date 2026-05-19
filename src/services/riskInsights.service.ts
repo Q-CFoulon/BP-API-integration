@@ -349,10 +349,18 @@ export async function loadRiskInsights(tenantId: string): Promise<RiskInsightsDa
 
   // SPR
   try {
-    const [rating, history] = await Promise.all([
+    const [rating, historyResponse] = await Promise.all([
       fetchSecurityPostureRating(tenantId),
       fetchSecurityPostureHistory(tenantId, 'months_6'),
     ]);
+    // Normalize: API may return { history: [...] } or { data: [...] } or just an array
+    const history: SprRatingHistory = {
+      history: Array.isArray(historyResponse)
+        ? historyResponse
+        : Array.isArray((historyResponse as SprRatingHistory)?.history)
+        ? (historyResponse as SprRatingHistory).history
+        : [],
+    };
     result.spr = { loaded: true, rating, history };
   } catch (err) {
     result.spr = {
@@ -383,8 +391,8 @@ export async function loadRiskInsights(tenantId: string): Promise<RiskInsightsDa
     result.darkWeb = {
       loaded: true,
       report,
-      exposures: exposuresResponse.data,
-      exposuresMeta: exposuresResponse.meta,
+      exposures: Array.isArray(exposuresResponse?.data) ? exposuresResponse.data : [],
+      exposuresMeta: exposuresResponse?.meta,
     };
   } catch (err) {
     result.darkWeb = {

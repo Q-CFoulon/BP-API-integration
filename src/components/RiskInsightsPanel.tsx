@@ -104,7 +104,7 @@ const RiskInsightsPanel: React.FC<RiskInsightsPanelProps> = ({ tenantId, tenantN
             </div>
 
             {/* History */}
-            {data.spr.history && data.spr.history.history.length > 0 && (
+            {data.spr.history?.history && data.spr.history.history.length > 0 && (
               <div className="spr-history">
                 <h4>Score History (6 Months)</h4>
                 <div className="spr-history-list">
@@ -133,7 +133,7 @@ const RiskInsightsPanel: React.FC<RiskInsightsPanelProps> = ({ tenantId, tenantN
                 {categoriesLoading ? 'Loading…' : 'View Category Breakdown'}
               </button>
             )}
-            {categories && categories.length > 0 && (
+            {Array.isArray(categories) && categories.length > 0 && (
               <div className="spr-categories">
                 <h4>Category Breakdown</h4>
                 {categories.map((cat, i) => (
@@ -237,7 +237,7 @@ const RiskInsightsPanel: React.FC<RiskInsightsPanelProps> = ({ tenantId, tenantN
             )}
 
             {/* Exposures Table */}
-            {data.darkWeb.exposures && data.darkWeb.exposures.length > 0 && (
+            {Array.isArray(data.darkWeb.exposures) && data.darkWeb.exposures.length > 0 && (
               <div className="darkweb-exposures-table-wrapper">
                 <h4>Recent Exposures ({data.darkWeb.exposuresMeta?.totalItems ?? data.darkWeb.exposures.length} total)</h4>
                 <table className="darkweb-exposures-table">
